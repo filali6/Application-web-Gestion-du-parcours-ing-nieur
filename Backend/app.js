@@ -60,9 +60,9 @@ app.use("/", cvRoutes);
 app.use("/years", saisonRoutes);
 
 //Notifications sent to mail using node cron//
-scheduleCronJobs();
-scheduleCronJobs1();
-startCronJob();
+// scheduleCronJobs();
+// scheduleCronJobs1();
+// startCronJob();
 //CONNECT TO DATABASE///
 mongoose
   .connect("mongodb://localhost/isamm_project_bd")

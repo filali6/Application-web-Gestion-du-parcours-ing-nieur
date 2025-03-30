@@ -26,12 +26,20 @@ export const loginStudent = async (req, res) => {
       { expiresIn: "24h" }
     );
 
-    return res.status(200).json({ message: "Login successful", token });
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        firstName: existingStudent.firstName,
+        lastName: existingStudent.lastName
+      }
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 ////////////////////////////// Login Controller for Teacher ///////////////////////////////////
 
@@ -55,12 +63,20 @@ export const loginTeacher = async (req, res) => {
       { expiresIn: "24h" }
     );
 
-    return res.status(200).json({ message: "Login successful", token });
+    return res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        firstName: existingTeacher.firstName,
+        lastName: existingTeacher.lastName
+      }
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 ///////////////////////////// Login Controller for Admin /////////////////////////////////////////////
 export const loginAdmin = async (req, res) => {

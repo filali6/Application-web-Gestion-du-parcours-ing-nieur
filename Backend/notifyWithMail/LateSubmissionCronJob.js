@@ -7,7 +7,7 @@ import cron from "node-cron";
  import { lateSubmissionEmailTemplate } from "./notifTemplate.js";
 
  const scheduleCronJobs1 = () => {
-   cron.schedule("* * * * *", async () => {
+   cron.schedule("0 0 1 * *", async () => {
      // Vérifier toutes les minutes
      try {
        console.log("Cron job started: checking late students");
