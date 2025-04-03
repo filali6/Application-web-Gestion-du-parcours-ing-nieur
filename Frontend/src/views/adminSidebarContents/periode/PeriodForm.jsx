@@ -1,27 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Form, Button, Card, Table } from "react-bootstrap";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { Form, Card, Table } from "react-bootstrap";
 import Swal from "sweetalert2";
+import PropTypes from "prop-types";
+import DatePickerField from "../../../components/Fields/DatePickerField";
+import PeriodTypeSelect from "../../../components/Fields/PeriodTypeSelect";
+import FormButtons from "../../../components/Buttons/FormButtons";
+import { periodTypes, errorTypeMessages } from "./constants";
 
-const periodTypes = [
-  { value: "pfa", label: "PFA for Teachers" },
-  { value: "stageEte", label: "Summer Internship" },
-  { value: "choicePFA", label: "PFA for Students" },
-];
-
-// Add this at the top of your component
-const errorTypeMessages = {
-  "already exists":
-    "There's already a period of this type during the selected dates.",
-  "already open": "There's an overlapping period of the same type.",
-  "Network issue": "Please check your internet connection and try again.",
-  "Request timeout":
-    "The server is taking too long to respond. Please try again.",
-  "No changes detected": "You haven't made any changes to the period.",
-};
-
-function PeriodForm({ initialData, onSubmit, onCancel }) {
+const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,24 +33,21 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
   };
 
   const handleDateChange = (date, field) => {
-    setErrors((prev) => ({ ...prev, [field]: "" })); // Clear error when user selects a date
+    setErrors((prev) => ({ ...prev, [field]: "" }));
     setFormData({ ...formData, [field]: date });
   };
 
   const handleTypeChange = (e) => {
-    setErrors((prev) => ({ ...prev, type: "" })); // Clear error when selecting a type
+    setErrors((prev) => ({ ...prev, type: "" }));
     setFormData({ ...formData, type: e.target.value });
   };
 
   const showErrorAlert = (error) => {
-    // Find the most specific error message
     let message = error.message || "An unexpected error occurred.";
 
-    // Check if error matches any known patterns
     for (const [key, value] of Object.entries(errorTypeMessages)) {
       if (message.includes(key)) {
         message = value;
-        // Special case for no changes
         if (key === "No changes detected") {
           Swal.fire({
             title: "No Changes",
@@ -94,7 +77,6 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
     try {
       await onSubmit(formData);
 
-      // Success handling
       Swal.fire({
         title: initialData ? "Updated!" : "Created!",
         text: `Period ${initialData ? "updated" : "created"} successfully.`,
@@ -113,11 +95,10 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
 
   const handleCancel = () => {
     setFormData({ StartDate: "", EndDate: "", type: "" });
-    setErrors({}); // Clear all errors on cancel
+    setErrors({});
     onCancel && onCancel();
   };
 
-  // Initialize form with initialData if provided (needed for editing)
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -142,7 +123,6 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
           <Form onSubmit={handleSubmit}>
             <Table borderless responsive className="mb-0">
               <tbody>
-                {/* Period Type Row */}
                 <tr>
                   <td className="ps-4" style={{ width: "30%" }}>
                     <Form.Label className="fw-bold small">
@@ -150,32 +130,15 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
                     </Form.Label>
                   </td>
                   <td>
-                    <Form.Control
-                      as="select"
+                    <PeriodTypeSelect
                       value={formData.type}
                       onChange={handleTypeChange}
-                      isInvalid={!!errors.type}
-                      className="form-control-sm"
-                      style={{ fontSize: "0.84rem" }}
-                    >
-                      <option value="" disabled>
-                        Select period type
-                      </option>
-                      {periodTypes.map((type) => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </Form.Control>
-                    {errors.type && (
-                      <Form.Text className="text-danger small">
-                        {errors.type}
-                      </Form.Text>
-                    )}
+                      error={errors.type}
+                      periodTypes={periodTypes}
+                    />
                   </td>
                 </tr>
 
-                {/* Start Date Row */}
                 <tr>
                   <td className="ps-4">
                     <Form.Label className="fw-bold small">
@@ -183,84 +146,54 @@ function PeriodForm({ initialData, onSubmit, onCancel }) {
                     </Form.Label>
                   </td>
                   <td>
-                    <DatePicker
+                    <DatePickerField
                       selected={formData.StartDate}
-                      onChange={(date) => handleDateChange(date, "StartDate")}
-                      className={`form-control  ${errors.StartDate ? "is-invalid" : ""}`}
-                      dateFormat="yyyy-MM-dd"
-                      wrapperClassName="w-100"
+                      onChange={handleDateChange}
+                      error={errors.StartDate}
                       placeholderText="Select start date"
+                      fieldName="StartDate"
                     />
-                    {errors.StartDate && (
-                      <div className="text-danger small mt-1">
-                        {errors.StartDate}
-                      </div>
-                    )}
                   </td>
                 </tr>
 
-                {/* End Date Row */}
                 <tr>
                   <td className="ps-4">
                     <Form.Label className="fw-bold small">End Date</Form.Label>
                   </td>
                   <td>
-                    <DatePicker
+                    <DatePickerField
                       selected={formData.EndDate}
-                      onChange={(date) => handleDateChange(date, "EndDate")}
-                      className={`form-control  ${errors.EndDate ? "is-invalid" : ""}`}
-                      dateFormat="yyyy-MM-dd"
-                      wrapperClassName="w-100"
+                      onChange={handleDateChange}
+                      error={errors.EndDate}
                       minDate={formData.StartDate}
                       placeholderText="Select end date"
+                      fieldName="EndDate"
                     />
-                    {errors.EndDate && (
-                      <div className="text-danger small mt-1">
-                        {errors.EndDate}
-                      </div>
-                    )}
                   </td>
                 </tr>
               </tbody>
             </Table>
 
-            {/* Buttons */}
-            <div className="d-flex justify-content-end mt-4 pe-4">
-              <Button
-                variant="outline-secondary"
-                onClick={handleCancel}
-                type="button"
-                className="btn btn-outline-secondary theme-bg2 f-12 rounded-pill px-3 me-2"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                className="btn theme-bg text-white f-12 rounded-pill px-3"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <>
-                    <span
-                      className="spinner-border spinner-border-sm me-1"
-                      role="status"
-                      aria-hidden="true"
-                    ></span>
-                    Processing...
-                  </>
-                ) : initialData ? (
-                  "Update"
-                ) : (
-                  "Create"
-                )}
-              </Button>
-            </div>
+            <FormButtons
+              isSubmitting={isSubmitting}
+              onCancel={handleCancel}
+              isEditMode={!!initialData}
+            />
           </Form>
         </Card.Body>
       </Card>
     </div>
   );
-}
+};
+
+PeriodForm.propTypes = {
+  initialData: PropTypes.shape({
+    type: PropTypes.string,
+    StartDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    EndDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+  }),
+  onSubmit: PropTypes.func.isRequired,
+  onCancel: PropTypes.func.isRequired,
+};
 
 export default PeriodForm;
