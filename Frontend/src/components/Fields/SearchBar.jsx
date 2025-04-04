@@ -5,7 +5,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => (
     <Col xs="auto">
       <Form.Control
         type="text"
-        placeholder="Search students..."
+        placeholder="Search..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
