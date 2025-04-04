@@ -42,7 +42,21 @@ const PfaList = () => {
         Swal.fire("Supprimé !", "Le PFA a été supprimé.", "success");
         fetchPfas();
       } catch (error) {
-        Swal.fire("Erreur", "Impossible de supprimer le PFA", "error");
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.error
+        ) {
+          // Afficher l'erreur spécifique du backend
+          Swal.fire("Erreur", error.response.data.error, "error");
+        } else {
+          // Message générique en cas d'erreur inattendue
+          Swal.fire(
+            "Erreur",
+            "Impossible de supprimer le PFA. Veuillez réessayer.",
+            "error"
+          );
+        }
       }
     }
   };

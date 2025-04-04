@@ -29,7 +29,15 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
       onRefresh();
       onClose();
     } catch (error) {
-      Swal.fire("Erreur", "Vérifiez les informations saisies", "error");
+      if (error.response && error.response.data && error.response.data.error) {
+        Swal.fire("Erreur", error.response.data.error, "error");
+      } else {
+        Swal.fire(
+          "Erreur",
+          "Une erreur est survenue. Veuillez réessayer.",
+          "error"
+        );
+      }
     }
   };
 
