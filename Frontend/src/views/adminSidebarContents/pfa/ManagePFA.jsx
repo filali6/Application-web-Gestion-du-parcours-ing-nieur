@@ -83,8 +83,9 @@ const ManagePFA = () => {
             cancelButtonText: "Non",
           }).then((result) => {
             if (result.isConfirmed) {
-              navigate("/periode/manage-periode", { state: {     fromManagePFA: true,
-              } }); // ← Redirection avec état
+              navigate("/periode/manage-periode", {
+                state: { fromManagePFA: true },
+              }); // ← Redirection avec état
             }
           });
         }
