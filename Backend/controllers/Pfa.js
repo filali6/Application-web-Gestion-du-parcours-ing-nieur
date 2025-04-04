@@ -84,7 +84,14 @@ export const addMultiplePfas = async (req, res) => {
     const newPfas = []; // Array to store validated and constructed PFAs
 
     for (const pfa of pfas) {
-      const { title, description, technologies, mode, Students = [], year } = pfa;
+      const {
+        title,
+        description,
+        technologies,
+        mode,
+        Students = [],
+        year,
+      } = pfa;
 
       // Check required fields
       if (!title || !description || !mode || !year) {
@@ -116,7 +123,9 @@ export const addMultiplePfas = async (req, res) => {
 
         if (invalidStudents.length > 0) {
           return res.status(400).json({
-            error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+            error: `The following student IDs are invalid: ${invalidStudents.join(
+              ", "
+            )}`,
           });
         }
 
@@ -127,10 +136,14 @@ export const addMultiplePfas = async (req, res) => {
         console.log("assignedStudents", assignedStudents);
         if (assignedStudents.length > 0) {
           // Collect all assigned student IDs
-          const assignedStudentIds = assignedStudents.flatMap((pfa) => pfa.Students);
+          const assignedStudentIds = assignedStudents.flatMap(
+            (pfa) => pfa.Students
+          );
 
           return res.status(400).json({
-            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(", ")}`,
+            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(
+              ", "
+            )}`,
           });
         }
       }
@@ -160,7 +173,9 @@ export const addMultiplePfas = async (req, res) => {
       const currentYear = new Date().getFullYear();
       if (typeof year !== "number" || year < 2000 || year > currentYear + 1) {
         return res.status(400).json({
-          error: `Invalid year for subject "${title}". Year must be between 2000 and ${currentYear + 1}.`,
+          error: `Invalid year for subject "${title}". Year must be between 2000 and ${
+            currentYear + 1
+          }.`,
         });
       }
 
@@ -204,7 +219,14 @@ export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
     const { id } = req.params; // Extract the PFA ID from the request parameters
-    const { title, description, technologies, mode, Students = [], year } = req.body; // Extract the updated data from the request body
+    const {
+      title,
+      description,
+      technologies,
+      mode,
+      Students = [],
+      year,
+    } = req.body; // Extract the updated data from the request body
 
     // Validate ownership of the PFA
     const pfa = await validateOwnership(id, teacherId);
@@ -244,7 +266,9 @@ export const updateMyPfa = async (req, res) => {
 
       if (invalidStudents.length > 0) {
         return res.status(400).json({
-          error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+          error: `The following student IDs are invalid: ${invalidStudents.join(
+            ", "
+          )}`,
         });
       }
 
@@ -292,9 +316,14 @@ export const updateMyPfa = async (req, res) => {
 
     // Validate the year if provided
     const currentYear = new Date().getFullYear();
-    if (year && (typeof year !== "number" || year < 2000 || year > currentYear + 1)) {
+    if (
+      year &&
+      (typeof year !== "number" || year < 2000 || year > currentYear + 1)
+    ) {
       return res.status(400).json({
-        error: `Invalid year. Year must be between 2000 and ${currentYear + 1}.`,
+        error: `Invalid year. Year must be between 2000 and ${
+          currentYear + 1
+        }.`,
       });
     }
 
@@ -340,7 +369,6 @@ export const updateMyPfa = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
 
 /**
  * Get all PFAs for the logged-in teacher
@@ -435,30 +463,37 @@ export const rejectPfa = async (req, res) => {
   }
 };
 
-const sendPfaEmail = async (isSecondSend, pfaLink) => {
-  const subject = isSecondSend
-    ? "Updated PFA Topics Available"
-    : "New PFA Topics Available";
+export const sendPfaEmail = async (req, res) => {
+  try {
+    const isSecondSend = await PFA.findOne({
+      emailSent: true,
+      status: { $ne: "rejected" },
+    });
 
-  const headerContent = `<h2>Dear All,</h2>
-                           <p>We are pleased to inform you that the PFA topics are now ${
-                             isSecondSend ? "updated" : "available"
-                           }. Please review the topics at the following link:</p>`;
+    const subject = isSecondSend
+      ? "Updated PFA Topics Available"
+      : "New PFA Topics Available";
 
-  const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
-                         <p><a href="${pfaLink}" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
+    const headerContent = `<h2>Dear All,</h2>
+                            <p>We are pleased to inform you that the PFA topics are now ${
+                              isSecondSend ? "updated" : "available"
+                            }. Please review the topics at the following link:</p>`;
 
-  const emailResults = await sendEmailToStudentsAndTeachers(
-    subject,
-    headerContent,
-    bodyContent
-  );
+    const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
+                          <p><a href="http://ISAMM.com/pfa-list" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
 
-  if (!isSecondSend) {
+    // Envoyer l'email
+    await sendEmailToStudentsAndTeachers(subject, headerContent, bodyContent);
+
+    // Marquer l'email comme envoyé
     await updatePfaEmailSentStatus();
-  }
 
-  return emailResults;
+    return res.status(200).json({
+      message: "Emails sent successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error sending PFA list email." });
+  }
 };
 
 // Function to send emails to students and teachers
@@ -469,37 +504,14 @@ const sendEmailToStudentsAndTeachers = async (
 ) => {
   const students = await Student.find({ level: 2 });
   const teachers = await Teacher.find();
-  const emailResults = [];
 
   for (let student of students) {
-    const result = await sendEmail(
-      student.email,
-      subject,
-      headerContent,
-      bodyContent
-    );
-    emailResults.push({
-      email: student.email,
-      success: result.success,
-      error: result.error,
-    });
+    await sendEmail(student.email, subject, headerContent, bodyContent);
   }
 
   for (let teacher of teachers) {
-    const result = await sendEmail(
-      teacher.email,
-      subject,
-      headerContent,
-      bodyContent
-    );
-    emailResults.push({
-      email: teacher.email,
-      success: result.success,
-      error: result.error,
-    });
+    await sendEmail(teacher.email, subject, headerContent, bodyContent);
   }
-
-  return emailResults;
 };
 
 const updatePfaEmailSentStatus = async () => {
@@ -596,6 +608,8 @@ export const publishPFA = async (req, res) => {
         .status(400)
         .json({ error: "Response must be 'true' or 'false'." });
     }
+
+    // Vérifier si une période de dépôt est toujours active
     const period = await GetActivePeriod();
     if (period) {
       return res
@@ -603,6 +617,7 @@ export const publishPFA = async (req, res) => {
         .json({ error: "The deposit period has not ended yet." });
     }
 
+    // Récupérer les PFA concernés
     const pfasToUpdate = await fetchPfasToUpdate(response);
     if (!pfasToUpdate.length && !(StartDate && EndDate)) {
       return res.status(404).json({ error: "No PFA found to update." });
@@ -615,60 +630,34 @@ export const publishPFA = async (req, res) => {
         StartDate,
         EndDate
       );
+
       periodResponse = existingPeriod
         ? await updatePeriod({ StartDate, EndDate }, existingPeriod.id)
         : await createPeriod({ StartDate, EndDate, type: "choicePFA" });
 
       if (!periodResponse.success) {
         return res.status(400).json({ error: periodResponse.message });
-      } else if (periodResponse.success && pfasToUpdate.length == 0) {
-        return res.status(200).json({
-          message: periodResponse.message,
-          period: periodResponse.period,
-        });
       }
     }
 
+    let updatedPfas;
     if (response === "true") {
-      const updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
+      updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
         periodChoice: periodResponse?.period?.id,
       });
-      const isSecondSend = await PFA.findOne({
-        emailSent: true,
-        stutus: { $ne: "rejected" },
-      });
-      const emailResults = await sendPfaEmail(
-        isSecondSend,
-        "http://ISAMM.com/pfa-list"
-      );
-      const pfaAlferPublished = await getAllPFEPublished();
-      return res.status(200).json({
-        message: "PFAs published successfully.",
-        choicePeriod: periodResponse
-          ? periodResponse.period
-          : "vous n'avez pas modfier/fournie une periode de choix",
-        pfas: pfaAlferPublished,
-        emailResults,
-      });
+    } else {
+      updatedPfas = await updatePfaStatus(pfasToUpdate, "hidden");
     }
 
-    const hiddenPfas = await updatePfaStatus(pfasToUpdate, "hidden");
-    const isSecondSend = await PFA.findOne({
-      emailSent: true,
-      stutus: { $ne: "rejected" },
-    });
-    const emailResults = await sendPfaEmail(
-      isSecondSend,
-      "http://ISAMM.com/pfa-list"
-    );
-    const pfaAlferPublished = await getAllPFEPublished();
     return res.status(200).json({
-      message: "PFAs hidden successfully.",
+      message:
+        response === "true"
+          ? "PFAs published successfully."
+          : "PFAs hidden successfully.",
       choicePeriod: periodResponse
         ? periodResponse.period
-        : "You have not modified/provided a choice period.",
-      pfas: pfaAlferPublished,
-      emailResults,
+        : "No choice period was modified or provided.",
+      pfas: updatedPfas,
     });
   } catch (error) {
     res
@@ -1246,101 +1235,112 @@ const sendEmailsToInvolved = async (
 };
 export const modifyPlanning = async (req, res) => {
   try {
-      const { encadrant, rapporteur, room, date, timeSlot } = req.body;
-      const { id } = req.params;
+    const { encadrant, rapporteur, room, date, timeSlot } = req.body;
+    const { id } = req.params;
 
-      const existingPlanning = await PlanningPfa.findById(id);
-      if (!existingPlanning) {
-          return res.status(404).json({ message: "Planning entry not found." });
+    const existingPlanning = await PlanningPfa.findById(id);
+    if (!existingPlanning) {
+      return res.status(404).json({ message: "Planning entry not found." });
+    }
+
+    let planningUpdated = {};
+
+    planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
+    planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
+    planningUpdated.room = room || existingPlanning.room;
+    planningUpdated.date = date || existingPlanning.date;
+    planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
+
+    let conflictingPlanning = null;
+
+    if (!date && !rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
+      }
+    }
+
+    if (date) {
+      const existingSoutenancesForDay = await PlanningPfa.countDocuments({
+        date: date,
+      });
+
+      if (existingSoutenancesForDay >= 6) {
+        return res.status(400).json({
+          message:
+            "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day.",
+        });
       }
 
-      let planningUpdated = {};
-
-      planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
-      planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
-      planningUpdated.room = room || existingPlanning.room;
-      planningUpdated.date = date || existingPlanning.date;
-      planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
-
-      let conflictingPlanning = null;
-
-      if (!date  && !rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
       }
+    }
 
-      if (date) {
-          const existingSoutenancesForDay = await PlanningPfa.countDocuments({ date: date });
-
-          if (existingSoutenancesForDay >= 6) {
-              return res.status(400).json({
-                  message: "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day."
-              });
-          }
-
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        rapporteur: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected rapporteur is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              rapporteur: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot,  
-              _id: { $ne: existingPlanning._id } 
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected rapporteur is already occupied at the same time and date."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        encadrant: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected encadrant is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              encadrant: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot, 
-              _id: { $ne: existingPlanning._id }  
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected encadrant is already occupied at the same time and date."
-              });
-          }
-      }
+    existingPlanning.encadrant = planningUpdated.encadrant;
+    existingPlanning.rapporteur = planningUpdated.rapporteur;
+    existingPlanning.room = planningUpdated.room;
+    existingPlanning.date = planningUpdated.date;
+    existingPlanning.timeSlot = planningUpdated.timeSlot;
 
-      existingPlanning.encadrant = planningUpdated.encadrant;
-      existingPlanning.rapporteur = planningUpdated.rapporteur;
-      existingPlanning.room = planningUpdated.room;
-      existingPlanning.date = planningUpdated.date;
-      existingPlanning.timeSlot = planningUpdated.timeSlot;
+    await existingPlanning.save();
 
-      await existingPlanning.save();
-
-      return res.status(200).json({ message: "Planning updated successfully.", planning: existingPlanning });
+    return res.status(200).json({
+      message: "Planning updated successfully.",
+      planning: existingPlanning,
+    });
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Error modifying the planning.", error });
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Error modifying the planning.", error });
   }
 };
-
 
 export const getTeacherPlannings = async (req, res) => {
   try {
@@ -1364,5 +1364,44 @@ export const getTeacherPlannings = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error retrieving plannings.", error });
+  }
+};
+
+export const getPFAs = async (req, res) => {
+  try {
+    console.log("Requête reçue pour récupérer les PFAs");
+
+    const pfas = await PFA.find()
+      .populate({
+        path: "Students",
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "teacher",
+        select: "firstName lastName",
+      });
+
+    // Format des résultats
+    const formattedPFAs = pfas.map((pfa) => ({
+      _id: pfa._id,
+      title: pfa.title,
+      description: pfa.description,
+      technologies: pfa.technologies,
+      mode: pfa.mode,
+      status: pfa.status,
+      year: pfa.year,
+      students:
+        pfa.Students.length > 0
+          ? pfa.Students.map((s) => `${s.firstName} ${s.lastName}`)
+          : [],
+      teacher: pfa.teacher
+        ? `${pfa.teacher.firstName} ${pfa.teacher.lastName}`
+        : "Pas encore",
+    }));
+
+    return res.status(200).json(formattedPFAs);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PFAs :", error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
   }
 };
