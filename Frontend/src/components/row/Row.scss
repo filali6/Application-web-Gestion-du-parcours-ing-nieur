@@ -1,0 +1,28 @@
+.row-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr 1fr 1fr;
+  align-items: center;
+  padding: 10px;
+  background: white;
+  font-size: 14px;
+  color: black;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+
+  button {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  button:hover {
+    background: rgba(0, 0, 0, 0.1);
+  }
+}

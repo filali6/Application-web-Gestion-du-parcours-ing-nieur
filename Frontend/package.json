@@ -11,6 +11,10 @@
     "prettier": "prettier --write \"src/**/*.{js,jsx,ts,tsx}\""
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
     "@originjs/vite-plugin-commonjs": "^1.0.3",
     "@react-google-maps/api": "^2.19.3",
     "@tanem/react-nprogress": "^5.0.51",
@@ -31,9 +35,10 @@
     "react-copy-to-clipboard": "^5.1.0",
     "react-dom": "^18.2.0",
     "react-google-charts": "^4.0.1",
-    "react-icons": "^5.0.1",
+    "react-icons": "^5.5.0",
     "react-perfect-scrollbar": "^1.5.8",
     "react-router-dom": "^6.30.0",
+    "sweetalert2": "^11.17.2",
     "vite": "^5.2.0",
     "vite-jsconfig-paths": "^2.0.1",
     "web-vitals": "^3.5.2",
@@ -72,7 +77,7 @@
     "immutable": "^4.3.5",
     "prettier": "3.2.5",
     "react-error-overlay": "6.0.11",
-    "sass": "^1.75.0"
+    "sass": "^1.86.2"
   },
   "packageManager": "yarn@4.1.1"
 }
