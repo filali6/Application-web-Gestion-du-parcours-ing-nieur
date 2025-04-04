@@ -17,6 +17,8 @@ const PeriodTableRow = ({ period, onEdit }) => {
     return { label: "Coming Soon", variant: "warning" };
   };
 
+  
+
   const status = getStatusInfo(period.StartDate, period.EndDate);
 
   return (

@@ -1,4 +1,3 @@
-// components/Students/StudentsList.jsx
 import React from 'react';
 import { getStudents } from '../../../services/studentsService';
 import GenericList from '../../../components/Generic/GenericList';

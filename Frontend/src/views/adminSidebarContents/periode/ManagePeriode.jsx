@@ -58,8 +58,7 @@ function ManagePeriode() {
   return (
     <div className="container">
       
-      <div className="row align-items-start">  {/* Added align-items-start */}
-        {/* Table section - takes more space */}
+      <div className="row align-items-start">  
         <div className="col-lg-8 pe-lg-3">  {/* Added right padding on lg screens */}
           <Tabs
             activeKey={activeTab}
@@ -67,7 +66,6 @@ function ManagePeriode() {
             id="period-tabs"
             className="mb-3"
           >
-            {/* Tab content remains the same */}
             <Tab eventKey="all" title="All Periods">
               <PeriodTable
                 periods={periods}
@@ -93,9 +91,8 @@ function ManagePeriode() {
           </Tabs>
         </div>
   
-        {/* Form card section - fixed width */}
         <div className="col-lg-4 ps-lg-2  mt-5">  {/* Added left padding and sticky positioning */}
-          <Card style={{ top: '20px' }}>  {/* Added small top offset */}
+          <Card style={{ top: '20px' }}>  
             <Card.Body>
               {isEditing ? (
                 <PeriodForm
