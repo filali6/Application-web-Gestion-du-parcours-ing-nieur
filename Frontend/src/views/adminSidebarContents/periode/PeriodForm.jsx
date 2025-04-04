@@ -7,7 +7,12 @@ import PeriodTypeSelect from "../../../components/Fields/PeriodTypeSelect";
 import FormButtons from "../../../components/Buttons/FormButtons";
 import { periodTypes, errorTypeMessages } from "./constants";
 
-const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
+const PeriodForm = ({
+  initialData,
+  onSubmit,
+  onCancel,
+  restrictToChoiceForStudents,
+}) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -135,6 +140,7 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
                       onChange={handleTypeChange}
                       error={errors.type}
                       periodTypes={periodTypes}
+                      restrictToChoiceForStudents={restrictToChoiceForStudents}
                     />
                   </td>
                 </tr>
@@ -189,11 +195,18 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
 PeriodForm.propTypes = {
   initialData: PropTypes.shape({
     type: PropTypes.string,
-    StartDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
-    EndDate: PropTypes.oneOfType([PropTypes.string, PropTypes.instanceOf(Date)]),
+    StartDate: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.instanceOf(Date),
+    ]),
+    EndDate: PropTypes.oneOfType([
+      PropTypes.string,
+      PropTypes.instanceOf(Date),
+    ]),
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+  restrictToChoiceForStudents: PropTypes.bool,
 };
 
 export default PeriodForm;
