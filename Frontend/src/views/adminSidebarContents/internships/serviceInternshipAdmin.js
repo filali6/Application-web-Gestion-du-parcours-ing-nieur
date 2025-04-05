@@ -141,3 +141,31 @@ export const updateTeacherForPlan = async (planId, teacherId, internshipId) => {
     throw error;
   }
 };
+ 
+
+export const sendPlanningEmails = async (sendType) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await axios.post(
+      `${API_URL}/send/${sendType}`,
+      {}, // aucun body
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+
+    return { success: true, message: response.data.message };
+  } catch (error) {
+    console.error("Error sending planning emails:", error);
+    return {
+      success: false,
+      message:
+        error.response?.data?.message ||
+        "Erreur lors de l'envoi des emails au serveur.",
+    };
+  }
+};
