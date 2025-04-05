@@ -18,6 +18,7 @@ import {
   updateTeacherForPlan,
 } from "./serviceInternshipAdmin";
 import UpdatePlanModal from "./updatePlan";
+import SendMailModal from "./sendMail";
 
 const TeacherTable = () => {
   const [teachers, setTeachers] = useState([]);
@@ -258,7 +259,7 @@ const toggleEmailPopup = () => {
                 className="ms-2"
                 onClick={toggleEmailPopup} // Remplacez cette fonction par ce que vous souhaitez faire
               >
-                Nouveau bouton
+                Envoyer Plannning
               </MDBBtn>
             </div>
           )}
@@ -275,7 +276,7 @@ const toggleEmailPopup = () => {
         />
       )}
       {showEmailModal && (
-        <UpdatePlanModal show={showEmailModal} toggleShow={toggleEmailPopup} />
+        <SendMailModal show={showEmailModal} toggleShow={toggleEmailPopup} />
       )}
     </div>
   );

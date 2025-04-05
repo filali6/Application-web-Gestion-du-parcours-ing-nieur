@@ -1,24 +1,43 @@
-import React, { useState } from "react";
-import { sendPlanningEmails } from "./serviceInternshipAdmin";
-import "./Update.css";
-import { MDBCheckbox } from "mdb-react-ui-kit";
+import React, { useEffect, useState } from "react";
+import { fetchTeachers } from "./serviceInternshipAdmin";
+import "./Update.css"; // On réutilise le même style que ProjectForm
 
-const UpdatePlanModal = ({ show, toggleShow }) => {
-  const [sendType, setSendType] = useState("first");
+const UpdatePlanModal = ({ show, toggleShow, onSubmit, plan }) => {
+  const [teachers, setTeachers] = useState([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+
+  useEffect(() => {
+    const loadTeachers = async () => {
+      try {
+        const data = await fetchTeachers();
+        setTeachers(data);
+      } catch (error) {
+        console.error("Erreur lors du chargement des enseignants :", error);
+      }
+    };
+    loadTeachers();
+  }, []);
+
+  useEffect(() => {
+    if (plan?.teachers?._id) {
+      setSelectedTeacherId(plan.teachers._id); // Définit l'enseignant actuel
+    } else if (plan?.teachers) {
+      setSelectedTeacherId(plan.teachers); // fallback au cas où ce n’est pas un objet
+    }
+  }, [plan]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const response = await sendPlanningEmails(sendType);
-      if (response.success) {
-        alert("Emails envoyés avec succès !");
-        toggleShow();
-      } else {
-        alert(response.message);
+    if (selectedTeacherId) {
+      try {
+        await onSubmit(plan._id, selectedTeacherId, plan.sujet._id); // Mise à jour
+        toggleShow(); // Ferme le popup après soumission
+        setSelectedTeacherId(""); // Réinitialise la sélection de l'enseignant
+      } catch (error) {
+        alert("Erreur lors de l'affectation de l'enseignant.");
       }
-    } catch (error) {
-      console.error("Erreur lors de l'envoi :", error);
-      alert("Erreur lors de l'envoi des emails");
+    } else {
+      alert("Veuillez sélectionner un enseignant.");
     }
   };
 
@@ -27,35 +46,44 @@ const UpdatePlanModal = ({ show, toggleShow }) => {
   return (
     <div className="modal-overlay">
       <div className="modal-content">
+        {/* Bouton de fermeture */}
         <button className="close-btn" onClick={toggleShow}>
           ✖
         </button>
 
-        <h2>Choisir type d'envoi</h2>
+        <h2>Modifier le planning</h2>
 
         <form onSubmit={handleSubmit} className="project-form">
+          {/* Select enseignant */}
           <div className="input-group">
-            <MDBCheckbox
-              name="sendType"
-              id="checkbox-first"
-              value="first"
-              label="Premier envoi"
-              checked={sendType === "first"}
-              onChange={() => setSendType("first")}
-            />
-            <MDBCheckbox
-              name="sendType"
-              id="checkbox-modified"
-              value="modified"
-              label="Envoi modifié"
-              checked={sendType === "modified"}
-              onChange={() => setSendType("modified")}
-            />
+            <label htmlFor="teacher">Sélectionnez un enseignant :</label>
+            <select
+              id="teacher"
+              className="form-input"
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+              required
+            >
+              <option value="">-- Choisir un enseignant --</option>
+              {teachers.map((teacher) => (
+                <option key={teacher._id} value={teacher._id}>
+                  {teacher.firstName} {teacher.lastName}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* Boutons */}
           <div className="button-group">
+            <button
+              type="button"
+              className="cancel-button"
+              onClick={toggleShow}
+            >
+              Annuler
+            </button>
             <button type="submit" className="submit-button">
-              Envoyer
+              Affecter
             </button>
           </div>
         </form>
