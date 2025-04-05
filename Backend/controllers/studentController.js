@@ -114,6 +114,22 @@ export const getStudents = async (req, res) => {
     });
   }
 };
+export const getStudentsPFA = async (req, res) => {
+  try {
+    const Students = await Student.find(
+      {
+        level: 2
+      }
+    ).select("-password -encryptedPassword");
+
+    res.status(200).json(Students);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des étudiants", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la récupération des étudiants.",
+    });
+  }
+};
 
 // recuperer un etudiant
 export const getStudentById = async (req, res) => {
@@ -615,3 +631,5 @@ export const updateProfile = async (req, res) => {
       .json({ message: "Erreur serveur lors de la mise à jour du profil." });
   }
 };
+
+
