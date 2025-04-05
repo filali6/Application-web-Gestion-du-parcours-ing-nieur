@@ -150,7 +150,7 @@ export const addMultiplePfas = async (req, res) => {
 
       // Validate student count based on mode
       if (mode === "binome") {
-        if (Students.length !== 2) {
+        if (Students.length > 2) {
           return res.status(400).json({
             error: `Subject "${title}" requires exactly 2 students for binome mode.`,
           });
@@ -163,7 +163,7 @@ export const addMultiplePfas = async (req, res) => {
         }
       }
 
-      if (mode === "monome" && Students.length !== 1) {
+      if (mode === "monome" && Students.length > 1) {
         return res.status(400).json({
           error: `Subject "${title}" requires exactly 1 student for monome mode.`,
         });
@@ -379,7 +379,11 @@ export const getMyPfas = async (req, res) => {
     const myPfas = await PFA.find({ teacher: teacherId })
       .populate({
         path: "Students",
-        select: "firstName lastName", // Only select firstName and lastName
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "choices.student",
+        select: "firstName lastName",
       })
       .lean();
 
