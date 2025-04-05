@@ -113,8 +113,8 @@ export const updateTeacherForPlan = async (planId, teacherId, internshipId) => {
     const response = await axios.patch(
       `${API_URL}/update/${planId}`,
       {
-        teacherId: teacherId,
-        internshipId: internshipId,
+          teacherId,
+          internshipId,
       },
       {
         headers: {
@@ -123,6 +123,8 @@ export const updateTeacherForPlan = async (planId, teacherId, internshipId) => {
         },
       }
     );
+          console.log("Réponse backend :", response.data);
+
 
     // Vérification si la réponse contient un plan mis à jour
     if (response.data.updatedPlan) {
