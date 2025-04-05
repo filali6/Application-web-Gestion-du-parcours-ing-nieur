@@ -25,25 +25,21 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
     try {
       const values = await form.validateFields();
       await addPfas(values.pfas);
-      Swal.fire("Succès", "PFAs ajoutés avec succès", "success");
+      Swal.fire("Success", "PFAs successfully added", "success");
       onRefresh();
       onClose();
     } catch (error) {
       if (error.response && error.response.data && error.response.data.error) {
-        Swal.fire("Erreur", error.response.data.error, "error");
+        Swal.fire("Error", error.response.data.error, "error");
       } else {
-        Swal.fire(
-          "Erreur",
-          "Une erreur est survenue. Veuillez réessayer.",
-          "error"
-        );
+        Swal.fire("Error", "An error has occurred. Please try again.", "error");
       }
     }
   };
 
   return (
     <Modal
-      title="Ajouter des PFAs"
+      title="Add PFAs"
       open={visible}
       onCancel={onClose}
       onOk={handleSubmit}
@@ -53,7 +49,7 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
           <div key={index} style={{ marginBottom: "20px" }}>
             <Form.Item
               name={["pfas", index, "title"]}
-              label="Titre"
+              label="Title"
               rules={[{ required: true }]}
             >
               <Input />
@@ -84,7 +80,7 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
             </Form.Item>
             <Form.Item
               name={["pfas", index, "year"]}
-              label="Année"
+              label="Year"
               rules={[{ required: true }]}
             >
               <InputNumber style={{ width: "100%" }} />
@@ -92,7 +88,7 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
           </div>
         ))}
         <Button type="dashed" onClick={handleAddPfa} block>
-          Ajouter un autre sujet
+          Add another topic
         </Button>
       </Form>
     </Modal>
