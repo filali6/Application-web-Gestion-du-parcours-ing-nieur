@@ -1,4 +1,5 @@
 import { Form, Row, Col, Button } from "react-bootstrap";
+import { Form, Row, Col, Button } from 'react-bootstrap';
 
 const SearchBar = ({ searchTerm, setSearchTerm }) => (
   <Form.Group as={Row} className="mb-0 me-3">
@@ -6,6 +7,7 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => (
       <Form.Control
         type="text"
         placeholder="Search students..."
+        placeholder="Search..."
         value={searchTerm}
         onChange={(e) => setSearchTerm(e.target.value)}
       />
@@ -13,4 +15,5 @@ const SearchBar = ({ searchTerm, setSearchTerm }) => (
   </Form.Group>
 );
 
+export default SearchBar;
 export default SearchBar;

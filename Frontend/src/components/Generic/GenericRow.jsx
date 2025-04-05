@@ -5,6 +5,15 @@ const GenericRow = ({
   columns,
   statusMap = {},
   customRenderers = {},
+
+import StatusBadge from "./../Badges/StatusBadge";
+
+const GenericRow = ({ 
+  item, 
+  columns, 
+  statusMap = {}, 
+  customRenderers = {} 
+
 }) => (
   <tr key={item._id || item.id}>
     {columns.map((column) => {
@@ -13,8 +22,14 @@ const GenericRow = ({
         return customRenderers[column.key](item);
       }
 
+
       // Special handling for status fields with statusMap
       if (column.key === "status" && statusMap[item.status]) {
+
+      
+      // Special handling for status fields with statusMap
+      if (column.key === 'status' && statusMap[item.status]) {
+
         return (
           <td key={column.key}>
             <StatusBadge
@@ -35,4 +50,8 @@ const GenericRow = ({
   </tr>
 );
 
+
 export default GenericRow;
+
+export default GenericRow;
+

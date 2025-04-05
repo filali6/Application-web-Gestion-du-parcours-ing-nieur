@@ -13,6 +13,8 @@ const PeriodForm = ({
   onCancel,
   restrictToChoiceForStudents,
 }) => {
+
+const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,13 +34,24 @@ const PeriodForm = ({
       formData.StartDate > formData.EndDate
     ) {
       newErrors.EndDate = "End date must be after start date";
+
+      newErrors.StartDate = "Start date must be before end date";
+
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleDateChange = (date, field) => {
+
     setErrors((prev) => ({ ...prev, [field]: "" }));
+
+    setErrors((prev) => ({
+      ...prev,
+      StartDate: "", // Clear StartDate error on any date change
+      EndDate: "", // Clear EndDate error on any date change
+    }));
+
     setFormData({ ...formData, [field]: date });
   };
 
@@ -53,6 +66,9 @@ const PeriodForm = ({
     for (const [key, value] of Object.entries(errorTypeMessages)) {
       if (message.includes(key)) {
         message = value;
+
+        // for the update alert
+
         if (key === "No changes detected") {
           Swal.fire({
             title: "No Changes",
@@ -116,6 +132,20 @@ const PeriodForm = ({
     }
   }, [initialData]);
 
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        type: initialData.type,
+        StartDate: initialData.StartDate
+          ? new Date(initialData.StartDate)
+          : null,
+        EndDate: initialData.EndDate ? new Date(initialData.EndDate) : null,
+      });
+      setErrors({}); // Clear existing errors when initial data changes
+    }
+  }, [initialData]);
+
   return (
     <div>
       <Card className="widget-focus-lg">
@@ -140,7 +170,9 @@ const PeriodForm = ({
                       onChange={handleTypeChange}
                       error={errors.type}
                       periodTypes={periodTypes}
+
                       restrictToChoiceForStudents={restrictToChoiceForStudents}
+
                     />
                   </td>
                 </tr>
@@ -206,6 +238,7 @@ PeriodForm.propTypes = {
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
+
   restrictToChoiceForStudents: PropTypes.bool,
 };
 

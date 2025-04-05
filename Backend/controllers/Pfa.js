@@ -61,7 +61,7 @@ const validateOwnership = async (pfaId, teacherId) => {
 };
 
 /**
- * Add multiple PFAs
+ * Add multiple PFAs 2.1
  */
 export const addMultiplePfas = async (req, res) => {
   try {
@@ -214,7 +214,7 @@ export const addMultiplePfas = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
+//2.2
 export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
@@ -669,7 +669,7 @@ export const publishPFA = async (req, res) => {
       .json({ error: "Internal error while publishing or hiding PFA." });
   }
 };
-
+//4.1
 export const listPFAByTeacher = async (req, res) => {
   try {
     const result = await PFA.aggregate([
@@ -698,12 +698,22 @@ export const listPFAByTeacher = async (req, res) => {
           as: "periodChoiceDetails",
         },
       },
+      // Récupère les infos COMPLÈTES des étudiants assignés (Students)
+      {
+        $lookup: {
+          from: "students",
+          localField: "Students",
+          foreignField: "_id",
+          as: "studentsFullDetails",
+        },
+      },
+      // Récupère les infos COMPLÈTES des étudiants ayant fait des choix (choices.student)
       {
         $lookup: {
           from: "students",
           localField: "choices.student",
           foreignField: "_id",
-          as: "studentDetails",
+          as: "choicesStudentsFullDetails",
         },
       },
       {
@@ -714,11 +724,23 @@ export const listPFAByTeacher = async (req, res) => {
           nbSujets: { $sum: 1 },
           sujets: {
             $push: {
+              _id: "$_id",
               title: "$title",
               description: "$description",
               mode: "$mode",
               status: "$status",
-              StudentsNames: "$StudentsNames",
+              // Étudiants assignés (avec nom/prénom)
+              students: {
+                $map: {
+                  input: "$studentsFullDetails",
+                  as: "student",
+                  in: {
+                    _id: "$$student._id",
+                    firstName: "$$student.firstName",
+                    lastName: "$$student.lastName",
+                  },
+                },
+              },
               emailSent: "$emailSent",
               dateDeposit: {
                 StartDateDeposit: {
@@ -734,14 +756,35 @@ export const listPFAByTeacher = async (req, res) => {
                   $arrayElemAt: ["$periodChoiceDetails.EndDate", 0],
                 },
               },
+              // Choix avec infos complètes des étudiants
               choices: {
                 $map: {
                   input: "$choices",
                   as: "choice",
                   in: {
-                    studentId: "$$choice.student",
+                    // Garde les infos originales du choix
                     priority: "$$choice.priority",
                     acceptedByTeacher: "$$choice.acceptedByTeacher",
+                    // Ajoute les infos de l'étudiant
+                    student: {
+                      $mergeObjects: [
+                        { _id: "$$choice.student" },
+                        {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: "$choicesStudentsFullDetails",
+                                as: "stu",
+                                cond: {
+                                  $eq: ["$$stu._id", "$$choice.student"],
+                                },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      ],
+                    },
                   },
                 },
               },
@@ -796,6 +839,8 @@ const getAllPFEPublished = async () => {
   return await PFA.find({ status: "published" });
 };
 
+//5.1
+
 export const selectPfaChoice = async (req, res) => {
   try {
     const { id } = req.params; // ID du PFA
@@ -839,15 +884,6 @@ export const selectPfaChoice = async (req, res) => {
       });
     }
 
-    // Vérifier si Students[] est vide
-    if (pfa.Students.length > 0) {
-      return res.status(400).json({
-        error: "Subject is temporarily assigned for now.",
-        error:
-          "Subject is not available for selection. Only published subjects can be selected.",
-      });
-    }
-
     // Vérifier si l'étudiant a déjà choisi ce sujet
     const existingChoice = pfa.choices.find(
       (choice) => choice.student.toString() === studentId
@@ -855,6 +891,13 @@ export const selectPfaChoice = async (req, res) => {
     if (existingChoice) {
       return res.status(400).json({
         error: "You have already selected this subject.",
+      });
+    }
+
+    // Vérifier si Students[] est vide
+    if (pfa.Students.length > 0) {
+      return res.status(400).json({
+        error: "Subject is temporarily assigned for now.",
       });
     }
 
