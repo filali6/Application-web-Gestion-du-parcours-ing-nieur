@@ -59,12 +59,10 @@ const PfaList = () => {
       try {
         await deletePfa(id);
 
-        // Mise à jour optimisée de l'état local
         setPfas((prevPfas) => prevPfas.filter((pfa) => pfa._id !== id));
 
         await Swal.fire("Deleted!", "The PFA has been deleted.", "success");
       } catch (error) {
-        // Recharger la liste complète en cas d'erreur
         fetchPfas();
 
         if (error.response?.data?.error) {

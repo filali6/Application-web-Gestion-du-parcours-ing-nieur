@@ -21,10 +21,8 @@ const EditPfaModal = ({ visible, onClose, onRefresh, editingPfa }) => {
       onClose();
     } catch (error) {
       if (error.response && error.response.data && error.response.data.error) {
-        // Afficher l'erreur spécifique du backend
         Swal.fire("Error", error.response.data.error, "error");
       } else {
-        // Message générique en cas d'erreur inattendue
         Swal.fire("Error", "Update failed. Please try again.", "error");
       }
     }

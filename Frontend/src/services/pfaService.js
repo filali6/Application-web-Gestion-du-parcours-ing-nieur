@@ -22,14 +22,12 @@ export const addPfas = async (pfas) => {
   );
 };
 
-// 🟢 Modifier un PFA
 export const updatePfa = async (id, pfaData) => {
   return axios.patch(`${API_URL}/PFA/${id}/updateMyPfa`, pfaData, {
     headers: getAuthHeaders(),
   });
 };
 
-// 🟢 Supprimer un PFA
 export const deletePfa = async (id) => {
   return axios.delete(`${API_URL}/PFA/deletepfa/${id}`, {
     headers: getAuthHeaders(),

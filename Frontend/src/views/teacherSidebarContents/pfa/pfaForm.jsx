@@ -9,7 +9,6 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
   const [form] = Form.useForm();
   const [pfas, setPfas] = useState([{}]);
 
-  // 👇 Ce useEffect vide le formulaire à chaque ouverture
   useEffect(() => {
     if (visible) {
       form.resetFields();
