@@ -61,7 +61,7 @@ const validateOwnership = async (pfaId, teacherId) => {
 };
 
 /**
- * Add multiple PFAs
+ * Add multiple PFAs 2.1
  */
 export const addMultiplePfas = async (req, res) => {
   try {
@@ -214,7 +214,7 @@ export const addMultiplePfas = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
+//2.2
 export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
