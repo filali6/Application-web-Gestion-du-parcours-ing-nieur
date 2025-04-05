@@ -56,8 +56,8 @@ const ChoosePFA = () => {
       }
     } catch (err) {
       Swal.fire({
-        title: "Erreur",
-        text: "Erreur lors du chargement des sujets",
+        title: "Error",
+        text: "Error loading topics",
         icon: "error",
         confirmButtonColor: "#1890ff",
       });
@@ -81,7 +81,7 @@ const ChoosePFA = () => {
     if (!values?.priority) {
       return Swal.fire({
         title: "Attention",
-        text: "Veuillez définir une priorité",
+        text: "Please set a priority",
         icon: "warning",
         confirmButtonColor: "#1890ff",
       });
@@ -95,8 +95,8 @@ const ChoosePFA = () => {
       });
 
       await Swal.fire({
-        title: "Succès",
-        text: "Sujet sélectionné avec succès",
+        title: "Success",
+        text: "Topic successfully selected",
         icon: "success",
         confirmButtonColor: "#1890ff",
       });
@@ -104,8 +104,8 @@ const ChoosePFA = () => {
       navigate("/pfa/my-pfa");
     } catch (err) {
       Swal.fire({
-        title: "Erreur",
-        text: err.response?.data?.error || "Erreur lors de la sélection",
+        title: "Error",
+        text: err.response?.data?.error || "Error while selecting",
         icon: "error",
         confirmButtonColor: "#1890ff",
       });
@@ -128,17 +128,17 @@ const ChoosePFA = () => {
         onClick={() => navigate("/pfa/my-pfa")}
         style={{ marginBottom: "24px" }}
       >
-        Retour à la liste
+        Back to list
       </Button>
 
       <Title level={2} style={{ marginBottom: "24px" }}>
-        <StarOutlined /> Sélectionner un sujet
+        <StarOutlined /> Select a topic
       </Title>
 
       {pfas.length === 0 ? (
         <Card loading={loading}>
           <Text type="secondary">
-            {loading ? "Chargement..." : "Aucun sujet trouvé"}
+            {loading ? "Loading..." : "No topics found"}
           </Text>
         </Card>
       ) : (
@@ -177,7 +177,7 @@ const ChoosePFA = () => {
 
               <Space direction="vertical" style={{ width: "100%" }}>
                 <Space>
-                  <Text strong>Priorité:</Text>
+                  <Text strong>Priority:</Text>
                   <InputNumber
                     min={1}
                     max={3}
@@ -189,9 +189,9 @@ const ChoosePFA = () => {
 
                 {pfa.mode === "binome" && (
                   <Space>
-                    <Text strong>ID du binôme:</Text>
+                    <Text strong>binôme ID:</Text>
                     <Input
-                      placeholder="Saisir l'ID étudiant"
+                      placeholder="Enter Student ID"
                       style={{ width: "200px" }}
                       onChange={(e) =>
                         handleSelect(pfa._id, "binomeId", e.target.value)
@@ -201,7 +201,7 @@ const ChoosePFA = () => {
                 )}
 
                 <Space>
-                  <Text strong>Accepté par l'enseignant:</Text>
+                  <Text strong>Accepted by the teacher:</Text>
                   <Select
                     style={{ width: "120px" }}
                     onChange={(val) =>
@@ -210,9 +210,9 @@ const ChoosePFA = () => {
                     defaultValue={false}
                   >
                     <Option value={true}>
-                      <CheckOutlined /> Oui
+                      <CheckOutlined /> Yes
                     </Option>
-                    <Option value={false}>Non</Option>
+                    <Option value={false}>No</Option>
                   </Select>
                 </Space>
               </Space>
@@ -223,7 +223,7 @@ const ChoosePFA = () => {
                 onClick={() => handleSubmit(pfa._id)}
                 style={{ marginTop: "16px" }}
               >
-                Valider la sélection
+                Validate the selection
               </Button>
             </Space>
           </Card>

@@ -39,7 +39,7 @@ const MyPFA = () => {
       // Ouvrir le premier panel par défaut
       if (data.length > 0) setActiveKey([data[0]._id]);
     } catch (error) {
-      Swal.fire("Erreur", "Impossible de récupérer les sujets", "error");
+      Swal.fire("Error", "Unable to retrieve subjects", "error");
     }
   };
 
@@ -77,7 +77,7 @@ const MyPFA = () => {
   return (
     <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
       <Title level={2} style={{ marginBottom: "24px" }}>
-        <SolutionOutlined /> Liste des sujets par enseignant
+        <SolutionOutlined /> List of subjects by teacher
       </Title>
 
       <Collapse
@@ -94,7 +94,7 @@ const MyPFA = () => {
                   <TeamOutlined />
                   {teacher.firstName} {teacher.lastName}
                 </Text>
-                <Tag>{teacher.nbSujets} sujets</Tag>
+                <Tag>{teacher.nbSujets} subjects</Tag>
               </Space>
             }
             key={teacher._id}
@@ -118,7 +118,7 @@ const MyPFA = () => {
                         type="primary"
                         onClick={() => navigate(`/pfa/choose/${sujet._id}`)}
                       >
-                        Choisir ce sujet
+                        Choose this topic
                       </Button>,
                     ]}
                   >
@@ -126,7 +126,7 @@ const MyPFA = () => {
 
                     <div style={{ marginTop: "16px" }}>
                       <Title level={5} style={{ marginBottom: "8px" }}>
-                        <TeamOutlined /> Étudiants assignés
+                        <TeamOutlined /> Assigned students
                       </Title>
                       {sujet.students && sujet.students.length > 0 ? (
                         <List
@@ -144,13 +144,13 @@ const MyPFA = () => {
                           )}
                         />
                       ) : (
-                        <Text type="secondary">Aucun étudiant assigné</Text>
+                        <Text type="secondary">No students assigned</Text>
                       )}
                     </div>
 
                     <div style={{ marginTop: "16px" }}>
                       <Title level={5} style={{ marginBottom: "8px" }}>
-                        <SolutionOutlined /> Choix des étudiants
+                        <SolutionOutlined /> Student Choice
                       </Title>
                       {sujet.choices && sujet.choices.length > 0 ? (
                         <List
@@ -170,7 +170,7 @@ const MyPFA = () => {
                                   </Text>
                                 </Space>
                                 <Space>
-                                  <Tag>Priorité: {choice.priority}</Tag>
+                                  <Tag>Priority: {choice.priority}</Tag>
                                   <Tag
                                     color={
                                       choice.acceptedByTeacher
@@ -179,8 +179,8 @@ const MyPFA = () => {
                                     }
                                   >
                                     {choice.acceptedByTeacher
-                                      ? "Accepté"
-                                      : "En attente"}
+                                      ? "Accepted"
+                                      : "On hold"}
                                   </Tag>
                                 </Space>
                               </Space>
@@ -188,7 +188,7 @@ const MyPFA = () => {
                           )}
                         />
                       ) : (
-                        <Text type="secondary">Aucun choix enregistré</Text>
+                        <Text type="secondary">No choice saved</Text>
                       )}
                     </div>
                   </Card>
