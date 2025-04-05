@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { addTopic } from "services/internshipservices";
+import { addTopic } from "services/internshipservicesstudent";
 import { useNavigate } from "react-router-dom";
 import "./Form.css"
 const ProjectForm = ({onTopicAdded,onClose}) => {

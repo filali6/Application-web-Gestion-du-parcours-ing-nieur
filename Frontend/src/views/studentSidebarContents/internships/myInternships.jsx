@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./Internships.css";
 import ProjectForm from "./ProjectForm"; 
-import { getTopics } from "services/internshipservices";
+import { getTopics } from "services/internshipservicesstudent";
 import { useNavigate } from "react-router-dom";
  
 
