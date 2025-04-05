@@ -379,7 +379,11 @@ export const getMyPfas = async (req, res) => {
     const myPfas = await PFA.find({ teacher: teacherId })
       .populate({
         path: "Students",
-        select: "firstName lastName", // Only select firstName and lastName
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "choices.student",
+        select: "firstName lastName",
       })
       .lean();
 
