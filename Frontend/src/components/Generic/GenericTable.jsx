@@ -1,5 +1,6 @@
 // components/Generic/GenericTable.jsx
 import { Table } from "react-bootstrap";
+import GenericRow from "./GenericRow";
 import GenericRow from "./../Generic/GenericRow";
 
 const GenericTable = ({
