@@ -104,12 +104,6 @@ const AddPfaModal = ({ visible, onClose, onRefresh }) => {
             <Form.Item
               name={["pfas", index, "Students"]}
               label="Étudiants assignés"
-              rules={[
-                {
-                  
-                  message: "Veuillez sélectionner des étudiants",
-                },
-              ]}
             >
               <Select
                 mode="multiple"

@@ -101,10 +101,6 @@ const EditPfaModal = ({ visible, onClose, onRefresh, editingPfa }) => {
         <Form.Item
           name="Students"
           label="Étudiants assignés"
-          rules={[
-            {  message: "Veuillez sélectionner des étudiants" },
-            { validator: validateStudents },
-          ]}
         >
           <Select
             mode="multiple"
