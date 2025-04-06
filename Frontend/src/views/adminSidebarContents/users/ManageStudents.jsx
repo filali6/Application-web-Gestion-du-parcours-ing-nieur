@@ -10,8 +10,14 @@ import {
 import Swal from "sweetalert2";
 import GenericList from "components/Generic/GenericList";
 import ManageIcons from "components/manageIcons/ManageIcons";
+import StudentForm from "components/form/StudentForm";
+import StudentUpdateForm from "components/form/StudentUpdateForm";
+import PasswordForm from "components/form/Password";
 
 const ManageStudents = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [currentStudent, setCurrentStudent] = useState(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const fileInputRef = useRef(null);
   const [reloadTrigger, setReloadTrigger] = useState(Date.now());
 
@@ -33,7 +39,6 @@ const ManageStudents = () => {
     try {
       const result = await importStudents(file, token);
 
-      // If there are import errors
       if (result?.errors && result.errors.length > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
@@ -46,7 +51,6 @@ const ManageStudents = () => {
         });
       }
 
-      // If students were successfully imported
       if (result?.imported > 0) {
         const count = result.imported || 0;
         Swal.fire(
@@ -54,13 +58,9 @@ const ManageStudents = () => {
           `Successfully imported ${count} student(s).`,
           "success"
         );
-
-        // Reload the student list without refreshing the page
         setReloadTrigger(Date.now());
-        console.log("Reload triggered", Date.now());
       }
 
-      // If there are errors and students were also imported
       if (result?.errors && result.errors.length > 0 && result.imported > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
@@ -71,10 +71,7 @@ const ManageStudents = () => {
           text: `${errorMessages}\nBut some students were successfully imported.`,
           icon: "warning",
         });
-
-        // Reload the student list without refreshing the page
         setReloadTrigger(Date.now());
-        console.log("Reload triggered", Date.now());
       }
     } catch (error) {
       Swal.fire(
@@ -111,18 +108,20 @@ const ManageStudents = () => {
             )
             .map(([key, value]) => {
               let displayValue = value ?? "Not specified";
-              if (
-                key === "history" &&
-                Array.isArray(value) &&
-                value.length > 0
-              ) {
-                displayValue = value
-                  .map(
-                    (item, index) =>
-                      `<div><strong>History ${index + 1}:</strong> ${JSON.stringify(item)}</div>`
-                  )
-                  .join("<br/>");
+
+              if (key === "history") {
+                if (Array.isArray(value) && value.length > 0) {
+                  displayValue = value
+                    .map(
+                      (item, index) =>
+                        `<div><strong>History ${index + 1}:</strong> ${JSON.stringify(item)}</div>`
+                    )
+                    .join("<br/>");
+                } else {
+                  displayValue = "Not specified";
+                }
               }
+
               return `${key}: ${displayValue}<br/>`;
             })
             .join("");
@@ -138,15 +137,13 @@ const ManageStudents = () => {
         break;
 
       case "edit":
-        Swal.fire("Edit", `Edit student ${student.firstName}`, "question");
+        setShowForm(true);
+        setCurrentStudent(student);
         break;
 
       case "lock":
-        Swal.fire(
-          "Locked",
-          `Account of ${student.firstName} is locked.`,
-          "warning"
-        );
+        setCurrentStudent(student);
+        setShowPasswordForm(true);
         break;
 
       case "delete":
@@ -175,7 +172,6 @@ const ManageStudents = () => {
               result.message?.toLowerCase().includes("relation") ||
               result.message?.toLowerCase().includes("lié")
             ) {
-              // Deuxième alerte pour la suppression forcée
               const forceResult = await Swal.fire({
                 title: "Student has related data",
                 text: "Student has relations with other entities. Do you want to force delete?",
@@ -231,7 +227,10 @@ const ManageStudents = () => {
           text="Add student"
           icon={<MdAddCircleOutline />}
           color="green"
-          onClick={() => console.log("Add a student")}
+          onClick={() => {
+            setShowForm(true);
+            setCurrentStudent(null);
+          }}
         />
 
         <Button
@@ -249,6 +248,52 @@ const ManageStudents = () => {
           onChange={handleFileChange}
         />
       </div>
+
+      {/* Formulaire de modification d'étudiant */}
+      {showForm && currentStudent && (
+        <StudentUpdateForm
+          student={currentStudent}
+          onSuccess={() => {
+            setShowForm(false);
+            setReloadTrigger(Date.now());
+          }}
+          onCancel={() => {
+            setShowForm(false);
+            setCurrentStudent(null);
+          }}
+        />
+      )}
+
+      {/* Formulaire d'ajout d'étudiant */}
+      {showForm && !currentStudent && (
+        <StudentForm
+          onSuccess={() => {
+            setShowForm(false);
+            setReloadTrigger(Date.now());
+          }}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
+
+      {/* Formulaire de changement de mot de passe */}
+      {showPasswordForm && currentStudent && (
+        <PasswordForm
+          studentId={currentStudent._id}
+          onSuccess={() => {
+            setShowPasswordForm(false);
+            setCurrentStudent(null);
+            Swal.fire({
+              title: "Success",
+              text: "Password updated successfully!",
+              icon: "success",
+            });
+          }}
+          onCancel={() => {
+            setShowPasswordForm(false);
+            setCurrentStudent(null);
+          }}
+        />
+      )}
 
       <GenericList
         title="Students list"

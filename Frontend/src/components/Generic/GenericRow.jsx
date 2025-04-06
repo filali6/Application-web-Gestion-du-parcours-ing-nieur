@@ -14,7 +14,7 @@ const GenericRow = ({
         return customRenderers[column.key](item);
       }
 
-      // ✅ 2. Nouveau : Render inline fourni dans column (ex: pour Actions avec icônes)
+      // 2. Nouveau : Render inline fourni dans column (ex: pour Actions avec icônes)
       if (typeof column.render === "function") {
         return <td key={column.key}>{column.render(item)}</td>;
       }

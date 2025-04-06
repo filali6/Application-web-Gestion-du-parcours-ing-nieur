@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const BASE_URL = "http://localhost:5000/students";
+const BASE_URL = "http://localhost:5000/teachers";
 
-//  Fonction pour récupérer les étudiants
-export const fetchStudents = async (filters = {}, token) => {
+//  Fonction pour récupérer les  enseignants
+export const fetchTeachers = async (filters = {}, token) => {
   if (!token) {
     console.error("No token provided.");
     return [];
@@ -16,13 +16,12 @@ export const fetchStudents = async (filters = {}, token) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Error in fetchStudents:", error);
+    console.error("Error in fetchTeachers:", error);
     return [];
   }
 };
-
-//  Fonction pour importer des étudiants via un fichier Excel
-export const importStudents = async (file, token) => {
+//  Fonction pour importer des enseignants via un fichier Excel
+export const importTeachers = async (file, token) => {
   if (!file || !token) {
     console.error("File or token is missing.");
     return { message: "Invalid data." };
@@ -38,12 +37,11 @@ export const importStudents = async (file, token) => {
 
     return response.data;
   } catch (error) {
-    console.error("Error in importStudents:", error);
-    return { message: "An error occurred while importing students." };
+    console.error("Error in importTeachers:", error);
+    return { message: "An error occurred while importing teachers." };
   }
 };
-
-export const getStudentById = async (id, token) => {
+export const getTeacherById = async (id, token) => {
   if (!id || !token) {
     console.error("ID or token is missing.");
     return null;
@@ -55,13 +53,13 @@ export const getStudentById = async (id, token) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Error fetching student:", error);
+    console.error("Error fetching teacher:", error);
     return null;
   }
 };
 
-// Fonction pour supprimer un étudiant
-export const deleteStudent = async (id, force = false, token) => {
+// Fonction pour supprimer un enseignant
+export const deleteTeacher = async (id, force = false, token) => {
   if (!id || !token) {
     console.error("ID or token is missing.");
     return { message: "Invalid data." };
@@ -74,60 +72,51 @@ export const deleteStudent = async (id, force = false, token) => {
     });
     return response.data;
   } catch (error) {
-    console.error("Error deleting student:", error);
+    console.error("Error deleting teacher:", error);
+
     const backendMessage = error.response?.data?.message;
 
     return {
       message:
-        backendMessage || "An error occurred while deleting the student.",
+        backendMessage || "An error occurred while deleting the teacher.",
     };
   }
 };
-//add student
-export const addStudent = async (studentData, token) => {
+//add teacher
+export const addTeacher = async (teacherData, token) => {
   try {
-    const response = await axios.post(BASE_URL, studentData, {
+    const response = await axios.post(BASE_URL, teacherData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
     return response.data;
   } catch (error) {
-    console.error("Error adding student:", error);
+    console.error("Error adding teacher:", error);
     const messagebackend = error.response?.data?.message;
-    return { message: messagebackend || "Error adding student." };
+    return { message: messagebackend || "Error adding teacher." };
   }
 };
-
-//update student
-export const updateStudent = async (id, formData, token) => {
-  if (!id || !token) {
-    console.error("ID or token is missing.");
-    return { message: "Invalid data." };
-  }
-
+// update teacher
+export const updateTeacher = async (id, updateData, token) => {
   try {
-    const response = await axios.patch(`${BASE_URL}/${id}`, formData, {
+    const response = await axios.patch(`${BASE_URL}/${id}`, updateData, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "multipart/form-data",
+        "Content-Type": "application/json",
       },
     });
-
     return response.data;
   } catch (error) {
-    console.error("Error updating student:", error);
-    // Return the server's error message if available
-    return {
-      message:
-        error.response?.data?.message ||
-        "An error occurred while updating the student.",
-    };
+    console.error("Error updating teacher:", {
+      request: error.config,
+      response: error.response?.data,
+    });
+    throw error;
   }
 };
 
-// Fonction pour modifier le mot de passe
-export const updateStudentPassword = async (id, passwordData, token) => {
+export const updateTeacherPassword = async (id, passwordData, token) => {
   if (!id || !token) {
     console.error("ID or token is missing.");
     return { message: "Invalid data." };
@@ -143,7 +132,7 @@ export const updateStudentPassword = async (id, passwordData, token) => {
     );
     return response.data;
   } catch (error) {
-    console.error("Error updating student password:", error);
+    console.error("Error updating teacher password:", error);
     return {
       message:
         error.response?.data?.message ||
