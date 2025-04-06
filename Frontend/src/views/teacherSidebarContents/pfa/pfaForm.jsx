@@ -1,0 +1,97 @@
+import React, { useState, useEffect } from "react";
+import { Modal, Form, Input, Select, Button, InputNumber } from "antd";
+import Swal from "sweetalert2";
+import { addPfas } from "../../../services/pfaService";
+
+const { Option } = Select;
+
+const AddPfaModal = ({ visible, onClose, onRefresh }) => {
+  const [form] = Form.useForm();
+  const [pfas, setPfas] = useState([{}]);
+
+  useEffect(() => {
+    if (visible) {
+      form.resetFields();
+      setPfas([{}]);
+    }
+  }, [visible]);
+
+  const handleAddPfa = () => {
+    setPfas([...pfas, {}]);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
+      await addPfas(values.pfas);
+      Swal.fire("Success", "PFAs successfully added", "success");
+      onRefresh();
+      onClose();
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.error) {
+        Swal.fire("Error", error.response.data.error, "error");
+      } else {
+        Swal.fire("Error", "An error has occurred. Please try again.", "error");
+      }
+    }
+  };
+
+  return (
+    <Modal
+      title="Add PFAs"
+      open={visible}
+      onCancel={onClose}
+      onOk={handleSubmit}
+    >
+      <Form form={form} name="addPfaForm">
+        {pfas.map((_, index) => (
+          <div key={index} style={{ marginBottom: "20px" }}>
+            <Form.Item
+              name={["pfas", index, "title"]}
+              label="Title"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name={["pfas", index, "description"]}
+              label="Description"
+              rules={[{ required: true }]}
+            >
+              <Input.TextArea rows={3} />
+            </Form.Item>
+            <Form.Item
+              name={["pfas", index, "technologies"]}
+              label="Technologies"
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name={["pfas", index, "mode"]}
+              label="Mode"
+              rules={[{ required: true }]}
+            >
+              <Select>
+                <Option value="monome">Monôme</Option>
+                <Option value="binome">Binôme</Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name={["pfas", index, "year"]}
+              label="Year"
+              rules={[{ required: true }]}
+            >
+              <InputNumber style={{ width: "100%" }} />
+            </Form.Item>
+          </div>
+        ))}
+        <Button type="dashed" onClick={handleAddPfa} block>
+          Add another topic
+        </Button>
+      </Form>
+    </Modal>
+  );
+};
+
+export default AddPfaModal;

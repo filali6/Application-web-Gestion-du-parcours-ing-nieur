@@ -21,6 +21,8 @@ const UpdatePlanModal = ({ show, toggleShow, onSubmit, plan }) => {
   useEffect(() => {
     if (plan?.teachers?._id) {
       setSelectedTeacherId(plan.teachers._id); // Définit l'enseignant actuel
+    } else if (plan?.teachers) {
+      setSelectedTeacherId(plan.teachers); // fallback au cas où ce n’est pas un objet
     }
   }, [plan]);
 

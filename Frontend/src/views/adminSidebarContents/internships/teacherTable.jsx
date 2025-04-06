@@ -110,22 +110,9 @@ const TeacherTable = () => {
 
   const handleUpdateTeacher = async (planId, newTeacherId, internshipId) => {
     try {
-      const updatedPlan = await updateTeacherForPlan(
-        planId,
-        newTeacherId,
-        internshipId
-      );
-
-      // Vérifiez ce que vous obtenez du backend
-      console.log("Updated Plan from backend:", updatedPlan);
-
-      if (updatedPlan) {
-        // Appeler fetchAndUpdatePlans pour récupérer les plans mis à jour
-        await fetchAndUpdatePlans();
-
-        // Fermer le modal après mise à jour
-        setShowPopup(false);
-      }
+    await updateTeacherForPlan(planId, newTeacherId, internshipId);
+    await fetchAndUpdatePlans(); // 🔄 Met à jour la liste après modif
+    setShowPopup(false); 
     } catch (err) {
       console.error("Erreur lors de la mise à jour de l'enseignant.", err);
       setError("Erreur lors de la mise à jour de l'enseignant.");
