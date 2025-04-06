@@ -113,7 +113,7 @@ const EditPfaModal = ({ visible, onClose, onRefresh, editingPfa }) => {
         <Form.Item name="year" label="Année" rules={[{ required: true }]}>
           <InputNumber
             style={{ width: "100%" }}
-            onChange={() => fetchStudents()}
+            onChange={(year) => fetchStudentsByYear(year)}
           />
         </Form.Item>
 
