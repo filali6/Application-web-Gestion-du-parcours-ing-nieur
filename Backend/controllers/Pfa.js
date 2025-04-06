@@ -1436,3 +1436,41 @@ export const getTeacherPlannings = async (req, res) => {
       .json({ message: "Error retrieving plannings.", error });
   }
 };
+export const getPFAs = async (req, res) => {
+  try {
+    console.log("Requête reçue pour récupérer les PFAs");
+
+    const pfas = await PFA.find()
+      .populate({
+        path: "Students",
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "teacher",
+        select: "firstName lastName",
+      });
+
+    // Format des résultats
+    const formattedPFAs = pfas.map((pfa) => ({
+      _id: pfa._id,
+      title: pfa.title,
+      description: pfa.description,
+      technologies: pfa.technologies,
+      mode: pfa.mode,
+      status: pfa.status,
+      year: pfa.year,
+      students:
+        pfa.Students.length > 0
+          ? pfa.Students.map((s) => `${s.firstName} ${s.lastName}`)
+          : [],
+      teacher: pfa.teacher
+        ? `${pfa.teacher.firstName} ${pfa.teacher.lastName}`
+        : "Pas encore",
+    }));
+
+    return res.status(200).json(formattedPFAs);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PFAs :", error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
+  }
+};
