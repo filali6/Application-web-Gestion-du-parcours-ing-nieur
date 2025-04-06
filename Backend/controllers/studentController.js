@@ -71,6 +71,7 @@ export const addStudent = async (req, res) => {
 
     // Reste de la logique pour ajouter l'étudiant...
     const plainPassword = generatePassword();
+    console.log("Mot de passe généré (addStudent):", plainPassword); // Ajout du console.log ici
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const encryptedPlainPassword = encryptPassword(plainPassword);
 
@@ -463,6 +464,10 @@ export const importStudents = async (req, res) => {
 
         // Générer un mot de passe et le hacher
         const plainPassword = generatePassword();
+        console.log(
+          `Mot de passe généré pour ${mappedRow.email} (importStudents):`,
+          plainPassword
+        );
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
         const encryptedPlainPassword = encryptPassword(plainPassword);
 
