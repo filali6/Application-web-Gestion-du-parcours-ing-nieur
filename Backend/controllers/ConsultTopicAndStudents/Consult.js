@@ -3,6 +3,61 @@ import Student from "../../models/Student.js";
 import Sujet from "../../models/topic.js";
 import PV from "../../models/Pv.js";
 
+// export const getPlanningsDetails = async (req, res) => {
+//   try {
+//     const yearFilter = req.yearFilter || {};
+//     const sujets = await Sujet.find(yearFilter).populate("student");
+//     const plannings = await Plan.find()
+//       .populate("sujet")
+//       .populate({
+//         path: "sujet",
+//         populate: { path: "student", model: "Student" },
+//       })
+//       .populate("teachers")
+//       .exec();
+//     const allStudents = await Student.find(yearFilter);
+
+//     const studentsWhoSubmitted = new Set(
+//       sujets.map((sujet) => sujet.student && sujet.student._id.toString())
+//     );
+//     if (!plannings || plannings.length === 0) {
+//       return res.status(404).json({ message: "no assign available " });
+//     }
+//     const details = plannings.map((plan) => {
+//       const sujet = plan.sujet || {};
+//       const student = sujet.student || {};
+//       console.log("Student in plan:", student);
+//       const teacher = plan.teachers || {};
+//       const hasSubmitted = studentsWhoSubmitted.has(student._id?.toString());
+//       const submissionStatus = sujet.isLate
+//         ? "late submission"
+//         : "submission in time";
+//       return {
+//         studentName: `${student.firstName || "Non spécifié"} ${
+//           student.lastName || "Non spécifié"
+//         }`,
+//         studentEmail: student.email || "Non spécifié",
+//         hasSubmitted,
+//         teacherName: `${teacher.firstName || "Non spécifié"} ${
+//           teacher.lastName || "Non spécifié"
+//         }`,
+//         teacherEmail: teacher.email || "Non spécifié",
+//         documents: sujet.documents || [],
+//         isPublished: plan.isPublished,
+//         submissionStatus,
+//       };
+//     });
+//     res.status(200).json({
+//       message: "Liste des plannings récupérée avec succès.",
+//       data: details,
+//     });
+//   } catch (e) {
+//     res.status(500).json({
+//       error: e.message,
+//       message: "Erreur lors de la récupération des plannings.",
+//     });
+//   }
+// };
 export const getPlanningsDetails = async (req, res) => {
   try {
     const yearFilter = req.yearFilter || {};
@@ -20,9 +75,14 @@ export const getPlanningsDetails = async (req, res) => {
     const studentsWhoSubmitted = new Set(
       sujets.map((sujet) => sujet.student && sujet.student._id.toString())
     );
+
     if (!plannings || plannings.length === 0) {
-      return res.status(404).json({ message: "no assign available " });
+      return res.status(200).json({
+        message: "Aucun sujet trouvé.",
+        data: [], // Renvoyer un tableau vide
+      });
     }
+
     const details = plannings.map((plan) => {
       const sujet = plan.sujet || {};
       const student = sujet.student || {};
@@ -47,6 +107,7 @@ export const getPlanningsDetails = async (req, res) => {
         submissionStatus,
       };
     });
+
     res.status(200).json({
       message: "Liste des plannings récupérée avec succès.",
       data: details,

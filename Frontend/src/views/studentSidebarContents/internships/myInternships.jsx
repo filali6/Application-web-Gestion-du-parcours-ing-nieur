@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from "react";
-import "./Internships.css";
-import ProjectForm from "./ProjectForm"; 
-import { getTopics } from "services/internshipservicesstudent";
 import { useNavigate } from "react-router-dom";
- 
+import ProjectForm from "./ProjectForm";
+import { getTopics } from "services/internshipservicesstudent";
+import { Button, Card, Modal, Container, Row, Col } from "react-bootstrap";
 
 const MyInternships = () => {
   const [showForm, setShowForm] = useState(false);
-   const [topics, setTopics] = useState([]);
-   const navigate = useNavigate();
-     useEffect(() => {
-       loadTopics();
-     }, []);
+  const [topics, setTopics] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadTopics();
+  }, []);
 
   const loadTopics = async () => {
     try {
@@ -25,26 +25,46 @@ const MyInternships = () => {
   const toggleForm = () => {
     setShowForm(!showForm);
   };
+
   return (
-    <div>
+    <Container className="mt-4">
       <h2>My Internships</h2>
-      
-      <button className="floating-btn" onClick={toggleForm}>
+
+      <Button
+        variant="primary"
+        className="position-fixed bottom-0 end-0 m-3"
+        style={{
+          width: "60px",
+          height: "60px",
+          fontSize: "36px",
+          borderRadius: "50%",
+          display: "flex", // Utilisation de flexbox
+          alignItems: "center", // Centrer verticalement
+          justifyContent: "center", // Centrer horizontalement
+        }}
+        onClick={toggleForm}
+      >
         +
-      </button>
+      </Button>
+
       {showForm && (
         <ProjectForm onTopicAdded={loadTopics} onClose={toggleForm} />
       )}
-      <div className="topics-list">
+
+      <Row className="mt-4">
         {topics.map((topic) => (
-          <div className="topic-card" key={topic.id}>
-            <div className="topic-content">
-              <p className="topic-title">{topic.titre}</p>
-            </div>
-          </div>
+          <Col key={topic.id} xs={12} md={6} lg={4} className="mb-4">
+            <Card className="shadow-sm">
+              <Card.Body>
+                <div className="d-flex justify-content-between align-items-center">
+                  <h5 className="card-title">{topic.titre}</h5>
+                </div>
+              </Card.Body>
+            </Card>
+          </Col>
         ))}
-      </div>
-    </div>
+      </Row>
+    </Container>
   );
 };
 
