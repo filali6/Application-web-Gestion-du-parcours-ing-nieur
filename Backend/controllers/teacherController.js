@@ -43,6 +43,7 @@ export const addTeacher = async (req, res) => {
 
     // Generate a strong random password
     const plainPassword = generatePassword();
+    console.log("Mot de passe généré (addTeacher):", plainPassword);
 
     // Encrypt the password
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
@@ -316,6 +317,10 @@ export const importTeachers = async (req, res) => {
 
         // Générer un mot de passe et le hacher
         const plainPassword = generatePassword();
+        console.log(
+          `Mot de passe généré pour ${mappedRow.email} (importTeachers):`,
+          plainPassword
+        );
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
         const encryptedPlainPassword = encryptPassword(plainPassword);
 
