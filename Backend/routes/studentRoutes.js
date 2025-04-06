@@ -9,6 +9,7 @@ import {
   importStudents,
   decryptStudentPassword,
   updateProfile,
+  getStudentsPFA
 } from "../controllers/studentController.js";
 import { validateStudent } from "../middlewares/studentValidate.js";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
@@ -23,7 +24,12 @@ import { uploadImage } from "../middlewares/uploadimage.js";
 import { yearFilter } from "../middlewares/year.js";
 
 const router = express.Router();
-
+router.get(
+  "/studentsPFA",
+  loggedMiddleware, // Vérifie le token et ajoute req.auth
+  isAdminOrTeacher, // Vérifie que l'utilisateur est un administrateur
+  getStudentsPFA // Contrôleur pour récupérer la liste des étudiants
+);
 // ajouter un étudiant
 router.post(
   "/",

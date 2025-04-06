@@ -19,6 +19,7 @@ const GetActivePeriod = async () => {
   });
   return period;
 };
+
 const getActivePeriod = async () => {
   const currentDate = new Date();
   const activePeriod = await Period.findOne({
@@ -32,18 +33,24 @@ const getActivePeriod = async () => {
       StartDate: { $gt: currentDate },
     });
     if (futurePeriod) {
-      throw new Error("Submission period has not started yet.");
+      return {
+        status: "notStarted",
+        message: "Submission period has not started yet.",
+      };
     }
 
     const pastPeriod = await Period.findOne({ EndDate: { $lt: currentDate } });
     if (pastPeriod) {
-      throw new Error(
-        "Submission period is over. You have missed the deadline."
-      );
+      return {
+        status: "finished",
+        message: "Submission period is over. You have missed the deadline.",
+      };
     }
+
+    return { status: "unknown", message: "No PFA period configured." };
   }
 
-  return activePeriod;
+  return { status: "active", period: activePeriod };
 };
 
 /**
@@ -61,7 +68,7 @@ const validateOwnership = async (pfaId, teacherId) => {
 };
 
 /**
- * Add multiple PFAs
+ * Add multiple PFAs 2.1
  */
 export const addMultiplePfas = async (req, res) => {
   try {
@@ -83,8 +90,17 @@ export const addMultiplePfas = async (req, res) => {
 
     const newPfas = []; // Array to store validated and constructed PFAs
 
+    const allStudentsInCurrentPfas = new Set(); // Set to collect all students in current batch
+
     for (const pfa of pfas) {
-      const { title, description, technologies, mode, Students = [], year } = pfa;
+      const {
+        title,
+        description,
+        technologies,
+        mode,
+        Students = [],
+        year,
+      } = pfa;
 
       // Check required fields
       if (!title || !description || !mode || !year) {
@@ -105,8 +121,20 @@ export const addMultiplePfas = async (req, res) => {
       // Validate and process student IDs if provided
       if (Students.length > 0) {
         const invalidStudents = [];
-        const uniqueStudentIds = new Set(Students); // Use a Set to avoid duplicates
+        const uniqueStudentIds = new Set(Students); // Unique student IDs in this PFA
 
+        // Check if students are already in the same batch of PFAs
+        for (const studentId of uniqueStudentIds) {
+          if (allStudentsInCurrentPfas.has(studentId)) {
+            return res.status(400).json({
+              error: `Student is already assigned to another subject in this batch.`,
+            });
+          }
+
+          allStudentsInCurrentPfas.add(studentId); // Add student to the set for comparison with next PFAs
+        }
+
+        // Check for invalid student IDs
         for (const studentId of uniqueStudentIds) {
           const student = await Student.findById(studentId); // Check if the student exists in the database
           if (!student) {
@@ -116,28 +144,32 @@ export const addMultiplePfas = async (req, res) => {
 
         if (invalidStudents.length > 0) {
           return res.status(400).json({
-            error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+            error: `The following student IDs are invalid: ${invalidStudents.join(
+              ", "
+            )}`,
           });
         }
 
-        // Check for duplicate assignments
+        // Check for duplicate assignments across existing PFAs
         const assignedStudents = await PFA.find({
           Students: { $in: Students },
         });
         console.log("assignedStudents", assignedStudents);
         if (assignedStudents.length > 0) {
           // Collect all assigned student IDs
-          const assignedStudentIds = assignedStudents.flatMap((pfa) => pfa.Students);
+          const assignedStudentIds = assignedStudents.flatMap(
+            (pfa) => pfa.Students
+          );
 
           return res.status(400).json({
-            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(", ")}`,
+            error: "Some students are already assigned to other subjects"
           });
         }
       }
 
       // Validate student count based on mode
       if (mode === "binome") {
-        if (Students.length !== 2) {
+        if (Students.length > 2) {
           return res.status(400).json({
             error: `Subject "${title}" requires exactly 2 students for binome mode.`,
           });
@@ -150,7 +182,7 @@ export const addMultiplePfas = async (req, res) => {
         }
       }
 
-      if (mode === "monome" && Students.length !== 1) {
+      if (mode === "monome" && Students.length > 1) {
         return res.status(400).json({
           error: `Subject "${title}" requires exactly 1 student for monome mode.`,
         });
@@ -160,7 +192,9 @@ export const addMultiplePfas = async (req, res) => {
       const currentYear = new Date().getFullYear();
       if (typeof year !== "number" || year < 2000 || year > currentYear + 1) {
         return res.status(400).json({
-          error: `Invalid year for subject "${title}". Year must be between 2000 and ${currentYear + 1}.`,
+          error: `Invalid year for subject "${title}". Year must be between 2000 and ${
+            currentYear + 1
+          }.`,
         });
       }
 
@@ -200,11 +234,19 @@ export const addMultiplePfas = async (req, res) => {
   }
 };
 
+
 export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
     const { id } = req.params; // Extract the PFA ID from the request parameters
-    const { title, description, technologies, mode, Students = [], year } = req.body; // Extract the updated data from the request body
+    const {
+      title,
+      description,
+      technologies,
+      mode,
+      Students = [],
+      year,
+    } = req.body; // Extract the updated data from the request body
 
     // Validate ownership of the PFA
     const pfa = await validateOwnership(id, teacherId);
@@ -230,7 +272,9 @@ export const updateMyPfa = async (req, res) => {
         error: `Invalid mode for subject "${title}". Must be 'monome' or 'binome'.`,
       });
     }
+
     // Validate student IDs if Students are provided
+
     if (Students.length > 0) {
       const invalidStudents = [];
       const uniqueStudentIds = new Set(Students); // Use a Set to avoid duplicates
@@ -244,13 +288,13 @@ export const updateMyPfa = async (req, res) => {
 
       if (invalidStudents.length > 0) {
         return res.status(400).json({
-          error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+          error: `The following student IDs are invalid: ${invalidStudents.join(
+            ", "
+          )}`,
         });
       }
-
       // Check for duplicate assignments
       const assignedStudents = await PFA.find({ Students: { $in: Students } });
-      console.log("assignedStudents", assignedStudents);
       if (assignedStudents.length > 0) {
         // Collect all assigned student IDs
         const assignedStudentIds = assignedStudents.flatMap(
@@ -258,9 +302,7 @@ export const updateMyPfa = async (req, res) => {
         );
 
         return res.status(400).json({
-          error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(
-            ", "
-          )}`,
+          error: "Some students are already assigned to other subjects",
         });
       }
     }
@@ -272,7 +314,7 @@ export const updateMyPfa = async (req, res) => {
           error: `Subject "${currenttitle}" requires exactly 2 students for binome mode.`,
         });
       }
-
+console.log("stydents", Students)
       // Check if the two student IDs are the same
       if (Students[0] === Students[1]) {
         return res.status(400).json({
@@ -292,9 +334,14 @@ export const updateMyPfa = async (req, res) => {
 
     // Validate the year if provided
     const currentYear = new Date().getFullYear();
-    if (year && (typeof year !== "number" || year < 2000 || year > currentYear + 1)) {
+    if (
+      year &&
+      (typeof year !== "number" || year < 2000 || year > currentYear + 1)
+    ) {
       return res.status(400).json({
-        error: `Invalid year. Year must be between 2000 and ${currentYear + 1}.`,
+        error: `Invalid year. Year must be between 2000 and ${
+          currentYear + 1
+        }.`,
       });
     }
 
@@ -341,7 +388,6 @@ export const updateMyPfa = async (req, res) => {
   }
 };
 
-
 /**
  * Get all PFAs for the logged-in teacher
  */
@@ -351,7 +397,11 @@ export const getMyPfas = async (req, res) => {
     const myPfas = await PFA.find({ teacher: teacherId })
       .populate({
         path: "Students",
-        select: "firstName lastName", // Only select firstName and lastName
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "choices.student",
+        select: "firstName lastName",
       })
       .lean();
 
@@ -415,10 +465,26 @@ export const rejectPfa = async (req, res) => {
   try {
     const { id } = req.params;
     const pfa = await PFA.findById(id);
-    const activePeriod = await GetActivePeriod();
-    if (activePeriod) {
+
+    const periodResult = await getActivePeriod();
+
+    // Si période active → on ne peut pas encore rejeter
+    if (periodResult.status === "active") {
       return res.status(400).json({
         error: "The deposit period has not ended yet.",
+      });
+    }
+
+    // Autres cas : période future ou expirée
+    if (periodResult.status === "notStarted") {
+      return res.status(400).json({
+        error: periodResult.message,
+      });
+    }
+
+    if (periodResult.status === "unknown") {
+      return res.status(400).json({
+        error: "No valid submission period found.",
       });
     }
 
@@ -427,38 +493,45 @@ export const rejectPfa = async (req, res) => {
     }
 
     pfa.status = "rejected";
-
     await pfa.save();
+
     res.status(200).json({ message: "PFA rejected successfully.", pfa });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Internal error while rejecting the PFA." });
   }
 };
+export const sendPfaEmail = async (req, res) => {
+  try {
+    const isSecondSend = await PFA.findOne({
+      emailSent: true,
+      status: { $ne: "rejected" },
+    });
 
-const sendPfaEmail = async (isSecondSend, pfaLink) => {
-  const subject = isSecondSend
-    ? "Updated PFA Topics Available"
-    : "New PFA Topics Available";
+    const subject = isSecondSend
+      ? "Updated PFA Topics Available"
+      : "New PFA Topics Available";
 
-  const headerContent = `<h2>Dear All,</h2>
-                           <p>We are pleased to inform you that the PFA topics are now ${
-                             isSecondSend ? "updated" : "available"
-                           }. Please review the topics at the following link:</p>`;
+    const headerContent = `<h2>Dear All,</h2>
+                            <p>We are pleased to inform you that the PFA topics are now ${
+                              isSecondSend ? "updated" : "available"
+                            }. Please review the topics at the following link:</p>`;
 
-  const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
-                         <p><a href="${pfaLink}" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
+    const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
+                          <p><a href="http://ISAMM.com/pfa-list" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
 
-  const emailResults = await sendEmailToStudentsAndTeachers(
-    subject,
-    headerContent,
-    bodyContent
-  );
+    // Envoyer l'email
+    await sendEmailToStudentsAndTeachers(subject, headerContent, bodyContent);
 
-  if (!isSecondSend) {
+    // Marquer l'email comme envoyé
     await updatePfaEmailSentStatus();
-  }
 
-  return emailResults;
+    return res.status(200).json({
+      message: "Emails sent successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error sending PFA list email." });
+  }
 };
 
 // Function to send emails to students and teachers
@@ -469,37 +542,14 @@ const sendEmailToStudentsAndTeachers = async (
 ) => {
   const students = await Student.find({ level: 2 });
   const teachers = await Teacher.find();
-  const emailResults = [];
 
   for (let student of students) {
-    const result = await sendEmail(
-      student.email,
-      subject,
-      headerContent,
-      bodyContent
-    );
-    emailResults.push({
-      email: student.email,
-      success: result.success,
-      error: result.error,
-    });
+    await sendEmail(student.email, subject, headerContent, bodyContent);
   }
 
   for (let teacher of teachers) {
-    const result = await sendEmail(
-      teacher.email,
-      subject,
-      headerContent,
-      bodyContent
-    );
-    emailResults.push({
-      email: teacher.email,
-      success: result.success,
-      error: result.error,
-    });
+    await sendEmail(teacher.email, subject, headerContent, bodyContent);
   }
-
-  return emailResults;
 };
 
 const updatePfaEmailSentStatus = async () => {
@@ -596,6 +646,8 @@ export const publishPFA = async (req, res) => {
         .status(400)
         .json({ error: "Response must be 'true' or 'false'." });
     }
+
+    // Vérifier si une période de dépôt est toujours active
     const period = await GetActivePeriod();
     if (period) {
       return res
@@ -603,6 +655,7 @@ export const publishPFA = async (req, res) => {
         .json({ error: "The deposit period has not ended yet." });
     }
 
+    // Récupérer les PFA concernés
     const pfasToUpdate = await fetchPfasToUpdate(response);
     if (!pfasToUpdate.length && !(StartDate && EndDate)) {
       return res.status(404).json({ error: "No PFA found to update." });
@@ -615,60 +668,34 @@ export const publishPFA = async (req, res) => {
         StartDate,
         EndDate
       );
+
       periodResponse = existingPeriod
         ? await updatePeriod({ StartDate, EndDate }, existingPeriod.id)
         : await createPeriod({ StartDate, EndDate, type: "choicePFA" });
 
       if (!periodResponse.success) {
         return res.status(400).json({ error: periodResponse.message });
-      } else if (periodResponse.success && pfasToUpdate.length == 0) {
-        return res.status(200).json({
-          message: periodResponse.message,
-          period: periodResponse.period,
-        });
       }
     }
 
+    let updatedPfas;
     if (response === "true") {
-      const updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
+      updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
         periodChoice: periodResponse?.period?.id,
       });
-      const isSecondSend = await PFA.findOne({
-        emailSent: true,
-        stutus: { $ne: "rejected" },
-      });
-      const emailResults = await sendPfaEmail(
-        isSecondSend,
-        "http://ISAMM.com/pfa-list"
-      );
-      const pfaAlferPublished = await getAllPFEPublished();
-      return res.status(200).json({
-        message: "PFAs published successfully.",
-        choicePeriod: periodResponse
-          ? periodResponse.period
-          : "vous n'avez pas modfier/fournie une periode de choix",
-        pfas: pfaAlferPublished,
-        emailResults,
-      });
+    } else {
+      updatedPfas = await updatePfaStatus(pfasToUpdate, "hidden");
     }
 
-    const hiddenPfas = await updatePfaStatus(pfasToUpdate, "hidden");
-    const isSecondSend = await PFA.findOne({
-      emailSent: true,
-      stutus: { $ne: "rejected" },
-    });
-    const emailResults = await sendPfaEmail(
-      isSecondSend,
-      "http://ISAMM.com/pfa-list"
-    );
-    const pfaAlferPublished = await getAllPFEPublished();
     return res.status(200).json({
-      message: "PFAs hidden successfully.",
+      message:
+        response === "true"
+          ? "PFAs published successfully."
+          : "PFAs hidden successfully.",
       choicePeriod: periodResponse
         ? periodResponse.period
-        : "You have not modified/provided a choice period.",
-      pfas: pfaAlferPublished,
-      emailResults,
+        : "No choice period was modified or provided.",
+      pfas: updatedPfas,
     });
   } catch (error) {
     res
@@ -676,7 +703,7 @@ export const publishPFA = async (req, res) => {
       .json({ error: "Internal error while publishing or hiding PFA." });
   }
 };
-
+//4.1
 export const listPFAByTeacher = async (req, res) => {
   try {
     const result = await PFA.aggregate([
@@ -705,12 +732,22 @@ export const listPFAByTeacher = async (req, res) => {
           as: "periodChoiceDetails",
         },
       },
+      // Récupère les infos COMPLÈTES des étudiants assignés (Students)
+      {
+        $lookup: {
+          from: "students",
+          localField: "Students",
+          foreignField: "_id",
+          as: "studentsFullDetails",
+        },
+      },
+      // Récupère les infos COMPLÈTES des étudiants ayant fait des choix (choices.student)
       {
         $lookup: {
           from: "students",
           localField: "choices.student",
           foreignField: "_id",
-          as: "studentDetails",
+          as: "choicesStudentsFullDetails",
         },
       },
       {
@@ -721,11 +758,23 @@ export const listPFAByTeacher = async (req, res) => {
           nbSujets: { $sum: 1 },
           sujets: {
             $push: {
+              _id: "$_id",
               title: "$title",
               description: "$description",
               mode: "$mode",
               status: "$status",
-              StudentsNames: "$StudentsNames",
+              // Étudiants assignés (avec nom/prénom)
+              students: {
+                $map: {
+                  input: "$studentsFullDetails",
+                  as: "student",
+                  in: {
+                    _id: "$$student._id",
+                    firstName: "$$student.firstName",
+                    lastName: "$$student.lastName",
+                  },
+                },
+              },
               emailSent: "$emailSent",
               dateDeposit: {
                 StartDateDeposit: {
@@ -741,14 +790,35 @@ export const listPFAByTeacher = async (req, res) => {
                   $arrayElemAt: ["$periodChoiceDetails.EndDate", 0],
                 },
               },
+              // Choix avec infos complètes des étudiants
               choices: {
                 $map: {
                   input: "$choices",
                   as: "choice",
                   in: {
-                    studentId: "$$choice.student",
+                    // Garde les infos originales du choix
                     priority: "$$choice.priority",
                     acceptedByTeacher: "$$choice.acceptedByTeacher",
+                    // Ajoute les infos de l'étudiant
+                    student: {
+                      $mergeObjects: [
+                        { _id: "$$choice.student" },
+                        {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: "$choicesStudentsFullDetails",
+                                as: "stu",
+                                cond: {
+                                  $eq: ["$$stu._id", "$$choice.student"],
+                                },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      ],
+                    },
                   },
                 },
               },
@@ -803,6 +873,8 @@ const getAllPFEPublished = async () => {
   return await PFA.find({ status: "published" });
 };
 
+//5.1
+
 export const selectPfaChoice = async (req, res) => {
   try {
     const { id } = req.params; // ID du PFA
@@ -846,15 +918,6 @@ export const selectPfaChoice = async (req, res) => {
       });
     }
 
-    // Vérifier si Students[] est vide
-    if (pfa.Students.length > 0) {
-      return res.status(400).json({
-        error: "Subject is temporarily assigned for now.",
-        error:
-          "Subject is not available for selection. Only published subjects can be selected.",
-      });
-    }
-
     // Vérifier si l'étudiant a déjà choisi ce sujet
     const existingChoice = pfa.choices.find(
       (choice) => choice.student.toString() === studentId
@@ -862,6 +925,13 @@ export const selectPfaChoice = async (req, res) => {
     if (existingChoice) {
       return res.status(400).json({
         error: "You have already selected this subject.",
+      });
+    }
+
+    // Vérifier si Students[] est vide
+    if (pfa.Students.length > 0) {
+      return res.status(400).json({
+        error: "Subject is temporarily assigned for now.",
       });
     }
 
@@ -1246,101 +1316,112 @@ const sendEmailsToInvolved = async (
 };
 export const modifyPlanning = async (req, res) => {
   try {
-      const { encadrant, rapporteur, room, date, timeSlot } = req.body;
-      const { id } = req.params;
+    const { encadrant, rapporteur, room, date, timeSlot } = req.body;
+    const { id } = req.params;
 
-      const existingPlanning = await PlanningPfa.findById(id);
-      if (!existingPlanning) {
-          return res.status(404).json({ message: "Planning entry not found." });
+    const existingPlanning = await PlanningPfa.findById(id);
+    if (!existingPlanning) {
+      return res.status(404).json({ message: "Planning entry not found." });
+    }
+
+    let planningUpdated = {};
+
+    planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
+    planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
+    planningUpdated.room = room || existingPlanning.room;
+    planningUpdated.date = date || existingPlanning.date;
+    planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
+
+    let conflictingPlanning = null;
+
+    if (!date && !rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
+      }
+    }
+
+    if (date) {
+      const existingSoutenancesForDay = await PlanningPfa.countDocuments({
+        date: date,
+      });
+
+      if (existingSoutenancesForDay >= 6) {
+        return res.status(400).json({
+          message:
+            "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day.",
+        });
       }
 
-      let planningUpdated = {};
-
-      planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
-      planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
-      planningUpdated.room = room || existingPlanning.room;
-      planningUpdated.date = date || existingPlanning.date;
-      planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
-
-      let conflictingPlanning = null;
-
-      if (!date  && !rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
       }
+    }
 
-      if (date) {
-          const existingSoutenancesForDay = await PlanningPfa.countDocuments({ date: date });
-
-          if (existingSoutenancesForDay >= 6) {
-              return res.status(400).json({
-                  message: "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day."
-              });
-          }
-
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        rapporteur: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected rapporteur is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              rapporteur: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot,  
-              _id: { $ne: existingPlanning._id } 
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected rapporteur is already occupied at the same time and date."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        encadrant: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected encadrant is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              encadrant: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot, 
-              _id: { $ne: existingPlanning._id }  
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected encadrant is already occupied at the same time and date."
-              });
-          }
-      }
+    existingPlanning.encadrant = planningUpdated.encadrant;
+    existingPlanning.rapporteur = planningUpdated.rapporteur;
+    existingPlanning.room = planningUpdated.room;
+    existingPlanning.date = planningUpdated.date;
+    existingPlanning.timeSlot = planningUpdated.timeSlot;
 
-      existingPlanning.encadrant = planningUpdated.encadrant;
-      existingPlanning.rapporteur = planningUpdated.rapporteur;
-      existingPlanning.room = planningUpdated.room;
-      existingPlanning.date = planningUpdated.date;
-      existingPlanning.timeSlot = planningUpdated.timeSlot;
+    await existingPlanning.save();
 
-      await existingPlanning.save();
-
-      return res.status(200).json({ message: "Planning updated successfully.", planning: existingPlanning });
+    return res.status(200).json({
+      message: "Planning updated successfully.",
+      planning: existingPlanning,
+    });
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Error modifying the planning.", error });
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Error modifying the planning.", error });
   }
 };
-
 
 export const getTeacherPlannings = async (req, res) => {
   try {
@@ -1364,5 +1445,43 @@ export const getTeacherPlannings = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error retrieving plannings.", error });
+  }
+};
+export const getPFAs = async (req, res) => {
+  try {
+    console.log("Requête reçue pour récupérer les PFAs");
+
+    const pfas = await PFA.find()
+      .populate({
+        path: "Students",
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "teacher",
+        select: "firstName lastName",
+      });
+
+    // Format des résultats
+    const formattedPFAs = pfas.map((pfa) => ({
+      _id: pfa._id,
+      title: pfa.title,
+      description: pfa.description,
+      technologies: pfa.technologies,
+      mode: pfa.mode,
+      status: pfa.status,
+      year: pfa.year,
+      students:
+        pfa.Students.length > 0
+          ? pfa.Students.map((s) => `${s.firstName} ${s.lastName}`)
+          : [],
+      teacher: pfa.teacher
+        ? `${pfa.teacher.firstName} ${pfa.teacher.lastName}`
+        : "Pas encore",
+    }));
+
+    return res.status(200).json(formattedPFAs);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PFAs :", error);
+    return res.status(500).json({ error: "Erreur interne du serveur" });
   }
 };

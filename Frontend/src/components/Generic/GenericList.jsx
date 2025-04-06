@@ -5,6 +5,10 @@ import GenericTable from "./GenericTable";
 
 const GenericList = ({
   title,
+<<<<<<< HEAD
+=======
+  items: externalItems, // ✅ Ajout de la prop `items
+>>>>>>> fc4f74dbfd5ae703c3b584233336af9b5f802564
   fetchItems,
   columns,
   statusMap,
@@ -12,7 +16,10 @@ const GenericList = ({
   searchFields = [],
   additionalFilters = null,
   noItemsMessage = "No items found",
+<<<<<<< HEAD
   reloadKey,
+=======
+>>>>>>> fc4f74dbfd5ae703c3b584233336af9b5f802564
 }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,23 +29,42 @@ const GenericList = ({
 
   useEffect(() => {
     const fetchData = async () => {
+<<<<<<< HEAD
       setLoading(true);
       setError(null);
+=======
+>>>>>>> fc4f74dbfd5ae703c3b584233336af9b5f802564
       try {
         const token = localStorage.getItem("token");
         const data = await fetchItems(filterValues, token);
         setItems(Array.isArray(data) ? data : []);
+<<<<<<< HEAD
       } catch (err) {
         console.error("Error:", err);
         setError(err?.response?.data?.message || "Error fetching items");
         setItems([]);
       } finally {
+=======
+        setLoading(false);
+      } catch (err) {
+        console.error("Error:", err);
+        setError(err.response?.data?.message || "Error fetching items");
+        setItems([]);
+>>>>>>> fc4f74dbfd5ae703c3b584233336af9b5f802564
         setLoading(false);
       }
     };
 
     fetchData();
+<<<<<<< HEAD
   }, [filterValues, fetchItems, reloadKey]);
+=======
+  }, [externalItems, filterValues, fetchItems]); //
+
+  useEffect(() => {
+    if (externalItems) setItems(externalItems);
+  }, [externalItems]);
+>>>>>>> fc4f74dbfd5ae703c3b584233336af9b5f802564
 
   const filteredItems = items.filter((item) => {
     if (!item) return false;
