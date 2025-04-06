@@ -21,7 +21,9 @@ import {
   getPlanningByStudent,
   publishOrUnpublishPlannings,
   modifyPlanning,
-  getTeacherPlannings
+  getTeacherPlannings,
+  getPFAs,sendPfaEmail
+  
 } from "../controllers/Pfa.js";
 import {
   assignManuallyPfa,
@@ -37,6 +39,8 @@ const router = express.Router();
 router.post("/addPfaS", loggedMiddleware, isTeacher, addMultiplePfas);
 router.get("/GetMyPFAs", loggedMiddleware, isTeacher, getMyPfas);
 router.get("/GetspecificPFA/:id", loggedMiddleware, isTeacher, getMyPfaById);
+router.get("/getPFAs", loggedMiddleware, isAdmin, getPFAs);
+router.post("/list/sendEmails", loggedMiddleware, isAdmin, sendPfaEmail);
 router.patch("/:id/updateMyPfa", loggedMiddleware, isTeacher, updateMyPfa);
 router.delete("/deletepfa/:id", loggedMiddleware, isTeacher, deleteMyPfa);
 router.patch("/reject/:id", loggedMiddleware, isAdmin, rejectPfa);

@@ -9,6 +9,7 @@ import {
   importStudents,
   decryptStudentPassword,
   updateProfile,
+  getStudentsPFA
 } from "../controllers/studentController.js";
 import { validateStudent } from "../middlewares/studentValidate.js";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
@@ -32,6 +33,12 @@ router.post(
   upload.single("transcript"), // Middleware pour gérer le fichier transcript
   validateStudent(studentValidationSchema), // Validation des données de l'étudiant
   addStudent // Contrôleur qui ajoute l'étudiant
+);
+router.get(
+  "/studentsPFA",
+  loggedMiddleware, // Vérifie le token et ajoute req.auth
+  isAdminOrTeacher, // Vérifie que l'utilisateur est un administrateur
+  getStudentsPFA // Contrôleur pour récupérer la liste des étudiants
 );
 
 // changer profil

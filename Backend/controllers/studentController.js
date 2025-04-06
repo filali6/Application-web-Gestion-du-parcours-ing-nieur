@@ -9,7 +9,20 @@ import path from "path";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
 import { encryptPassword, decryptPassword } from "../encryption.js";
 import mongoose from "mongoose";
+export const getStudentsPFA = async (req, res) => {
+  try {
+    const Students = await Student.find({
+      level: 2,
+    }).select("-password -encryptedPassword");
 
+    res.status(200).json(Students);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des étudiants", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la récupération des étudiants.",
+    });
+  }
+};
 // Fonction pour générer un mot de passe aléatoire
 export const generatePassword = (length = 12) => {
   const charset =
