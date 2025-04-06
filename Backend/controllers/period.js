@@ -33,7 +33,6 @@ export const addPeriod = async (req, res) => {
     res.status(500).json({ error: "Internal error while adding the period." });
   }
 };
-
 export const updatePeriod = async (req, res) => {
   try {
     const { id } = req.params;

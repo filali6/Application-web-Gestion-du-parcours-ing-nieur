@@ -33,3 +33,43 @@ export const deletePfa = async (id) => {
     headers: getAuthHeaders(),
   });
 };
+export const fetchPFAs = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.get(`${API_URL}/pfa/getPFAs`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+export const publishPFAs = async (response) => {
+  const token = localStorage.getItem("token");
+  await axios.patch(
+    `${API_URL}/pfa/publish/${response}`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+};
+
+export const sendPfaEmail = async () => {
+  const token = localStorage.getItem("token");
+  await axios.post(
+    `${API_URL}/pfa/list/sendEmails`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+};
+
+export const rejectPfa = async (id) => {
+  const token = localStorage.getItem("token");
+  await axios.patch(
+    `${API_URL}/pfa/reject/${id}`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+};
