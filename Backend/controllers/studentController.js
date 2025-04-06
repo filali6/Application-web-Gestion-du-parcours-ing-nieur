@@ -53,21 +53,25 @@ export const addStudent = async (req, res) => {
       return res.status(400).json({ message: "L'email existe déjà." });
     }
 
+    // Vérifier si un fichier transcript est fourni
     let transcriptPath = null;
     if (req.file) {
+      // Définir un chemin de sauvegarde pour les fichiers
       const uploadDir = "./uploads";
       if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
+        fs.mkdirSync(uploadDir, { recursive: true }); // Créer le répertoire s'il n'existe pas
       }
 
+      // Nom unique pour le fichier
       const fileName = `${Date.now()}-${req.file.originalname}`;
       transcriptPath = path.join(uploadDir, fileName);
+
+      // Sauvegarder le fichier sur le disque
       fs.writeFileSync(transcriptPath, req.file.buffer);
     }
 
+    // Reste de la logique pour ajouter l'étudiant...
     const plainPassword = generatePassword();
-    console.log("Mot de passe généré (addStudent):", plainPassword); // Ajout du console.log ici
-
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const encryptedPlainPassword = encryptPassword(plainPassword);
 
@@ -75,11 +79,12 @@ export const addStudent = async (req, res) => {
       ...studentData,
       password: hashedPassword,
       encryptedPassword: encryptedPlainPassword,
-      transcript: transcriptPath,
+      transcript: transcriptPath, // Sauvegarder le chemin du fichier
     });
 
     await newStudent.save();
 
+    // Envoyer un email avec les détails
     const emailTemplate = createAccountEmailTemplate("added", {
       firstName: newStudent.firstName,
       lastName: newStudent.lastName,
@@ -98,7 +103,7 @@ export const addStudent = async (req, res) => {
       message: `Étudiant ${studentData.firstName} ${studentData.lastName} ajouté avec succès.`,
       student: {
         ...newStudent.toObject(),
-        password: undefined,
+        password: undefined, // Masquer le mot de passe dans la réponse
         encryptedPassword: undefined,
       },
     });
@@ -380,6 +385,7 @@ export const importStudents = async (req, res) => {
       return res.status(400).json({ message: "Aucun fichier fourni." });
     }
 
+    // Vérification du type de fichier//
     const allowedMimeTypes = [
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "application/vnd.ms-excel",
@@ -390,6 +396,7 @@ export const importStudents = async (req, res) => {
       });
     }
 
+    // Lecture du fichier Excel
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
     if (!workbook || workbook.SheetNames.length === 0) {
       return res.status(400).json({ message: "Le fichier Excel est vide." });
@@ -403,6 +410,7 @@ export const importStudents = async (req, res) => {
 
     for (const row of sheetData) {
       try {
+        // Vérifier si le CIN existe déjà
         const existingStudent = await Student.findOne({
           cin: String(row["cin"]),
         });
@@ -414,8 +422,9 @@ export const importStudents = async (req, res) => {
           continue;
         }
 
+        // Mapper les données d'une ligne (sans mot de passe)
         const mappedRow = {
-          cin: String(row["cin"] || ""),
+          cin: String(row["cin"] || ""), // Convertir en chaîne ou valeur vide
           email: row["email"],
           firstName: row["prenom"],
           lastName: row["Nom"],
@@ -441,6 +450,7 @@ export const importStudents = async (req, res) => {
           level: row["cfil"] === "GIAM223" ? 2 : 1,
         };
 
+        // Valider les données avec Joi (sans mot de passe)
         const { error } = studentValidationSchema.validate(mappedRow, {
           abortEarly: false,
         });
@@ -452,21 +462,20 @@ export const importStudents = async (req, res) => {
           continue;
         }
 
+        // Générer un mot de passe et le hacher
         const plainPassword = generatePassword();
-        console.log(
-          `Mot de passe généré pour ${mappedRow.email} (importStudents):`,
-          plainPassword
-        ); // Ajout du console.log ici
-
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
         const encryptedPlainPassword = encryptPassword(plainPassword);
 
+        // Ajouter le mot de passe au mappedRow après validation
         mappedRow.password = hashedPassword;
         mappedRow.encryptedPassword = encryptedPlainPassword;
 
+        // Créer un nouvel étudiant
         const newStudent = new Student(mappedRow);
         await newStudent.save();
 
+        // Envoyer un e-mail avec les détails du compte
         const emailTemplate = createAccountEmailTemplate("added", {
           firstName: newStudent.firstName,
           lastName: newStudent.lastName,
@@ -481,6 +490,7 @@ export const importStudents = async (req, res) => {
           attachments: emailTemplate.attachments,
         });
 
+        // Ajouter à la liste des étudiants importés
         importedStudents.push(newStudent);
       } catch (error) {
         console.error("Erreur lors de l'importation d'une ligne :", error);
@@ -491,6 +501,7 @@ export const importStudents = async (req, res) => {
       }
     }
 
+    // Résultat final
     res.status(200).json({
       message: "Importation terminée.",
       imported: importedStudents.length,
