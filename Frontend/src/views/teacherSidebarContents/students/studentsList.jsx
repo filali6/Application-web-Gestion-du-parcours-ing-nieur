@@ -39,8 +39,4 @@ const StudentsList = () => {
   return <GenericList {...studentConfig} />;
 };
 
-
-export default studentsList;
-
 export default StudentsList;
-

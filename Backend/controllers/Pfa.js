@@ -467,37 +467,30 @@ export const rejectPfa = async (req, res) => {
   }
 };
 
-export const sendPfaEmail = async (req, res) => {
-  try {
-    const isSecondSend = await PFA.findOne({
-      emailSent: true,
-      status: { $ne: "rejected" },
-    });
+const sendPfaEmail = async (isSecondSend, pfaLink) => {
+  const subject = isSecondSend
+    ? "Updated PFA Topics Available"
+    : "New PFA Topics Available";
 
-    const subject = isSecondSend
-      ? "Updated PFA Topics Available"
-      : "New PFA Topics Available";
+  const headerContent = `<h2>Dear All,</h2>
+                           <p>We are pleased to inform you that the PFA topics are now ${
+                             isSecondSend ? "updated" : "available"
+                           }. Please review the topics at the following link:</p>`;
 
-    const headerContent = `<h2>Dear All,</h2>
-                            <p>We are pleased to inform you that the PFA topics are now ${
-                              isSecondSend ? "updated" : "available"
-                            }. Please review the topics at the following link:</p>`;
+  const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
+                         <p><a href="${pfaLink}" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
 
-    const bodyContent = `<p style="font-size: 16px;">Click the link below to view the updated topics:</p>
-                          <p><a href="http://ISAMM.com/pfa-list" target="_blank" style="color: #0078FF;">View Topics</a></p>`;
+  const emailResults = await sendEmailToStudentsAndTeachers(
+    subject,
+    headerContent,
+    bodyContent
+  );
 
-    // Envoyer l'email
-    await sendEmailToStudentsAndTeachers(subject, headerContent, bodyContent);
-
-    // Marquer l'email comme envoyé
+  if (!isSecondSend) {
     await updatePfaEmailSentStatus();
-
-    return res.status(200).json({
-      message: "Emails sent successfully.",
-    });
-  } catch (error) {
-    res.status(500).json({ error: "Error sending PFA list email." });
   }
+
+  return emailResults;
 };
 
 // Function to send emails to students and teachers
@@ -508,14 +501,37 @@ const sendEmailToStudentsAndTeachers = async (
 ) => {
   const students = await Student.find({ level: 2 });
   const teachers = await Teacher.find();
+  const emailResults = [];
 
   for (let student of students) {
-    await sendEmail(student.email, subject, headerContent, bodyContent);
+    const result = await sendEmail(
+      student.email,
+      subject,
+      headerContent,
+      bodyContent
+    );
+    emailResults.push({
+      email: student.email,
+      success: result.success,
+      error: result.error,
+    });
   }
 
   for (let teacher of teachers) {
-    await sendEmail(teacher.email, subject, headerContent, bodyContent);
+    const result = await sendEmail(
+      teacher.email,
+      subject,
+      headerContent,
+      bodyContent
+    );
+    emailResults.push({
+      email: teacher.email,
+      success: result.success,
+      error: result.error,
+    });
   }
+
+  return emailResults;
 };
 
 const updatePfaEmailSentStatus = async () => {
@@ -612,8 +628,6 @@ export const publishPFA = async (req, res) => {
         .status(400)
         .json({ error: "Response must be 'true' or 'false'." });
     }
-
-    // Vérifier si une période de dépôt est toujours active
     const period = await GetActivePeriod();
     if (period) {
       return res
@@ -621,7 +635,6 @@ export const publishPFA = async (req, res) => {
         .json({ error: "The deposit period has not ended yet." });
     }
 
-    // Récupérer les PFA concernés
     const pfasToUpdate = await fetchPfasToUpdate(response);
     if (!pfasToUpdate.length && !(StartDate && EndDate)) {
       return res.status(404).json({ error: "No PFA found to update." });
@@ -634,34 +647,60 @@ export const publishPFA = async (req, res) => {
         StartDate,
         EndDate
       );
-
       periodResponse = existingPeriod
         ? await updatePeriod({ StartDate, EndDate }, existingPeriod.id)
         : await createPeriod({ StartDate, EndDate, type: "choicePFA" });
 
       if (!periodResponse.success) {
         return res.status(400).json({ error: periodResponse.message });
+      } else if (periodResponse.success && pfasToUpdate.length == 0) {
+        return res.status(200).json({
+          message: periodResponse.message,
+          period: periodResponse.period,
+        });
       }
     }
 
-    let updatedPfas;
     if (response === "true") {
-      updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
+      const updatedPfas = await updatePfaStatus(pfasToUpdate, "published", {
         periodChoice: periodResponse?.period?.id,
       });
-    } else {
-      updatedPfas = await updatePfaStatus(pfasToUpdate, "hidden");
+      const isSecondSend = await PFA.findOne({
+        emailSent: true,
+        stutus: { $ne: "rejected" },
+      });
+      const emailResults = await sendPfaEmail(
+        isSecondSend,
+        "http://ISAMM.com/pfa-list"
+      );
+      const pfaAlferPublished = await getAllPFEPublished();
+      return res.status(200).json({
+        message: "PFAs published successfully.",
+        choicePeriod: periodResponse
+          ? periodResponse.period
+          : "vous n'avez pas modfier/fournie une periode de choix",
+        pfas: pfaAlferPublished,
+        emailResults,
+      });
     }
 
+    const hiddenPfas = await updatePfaStatus(pfasToUpdate, "hidden");
+    const isSecondSend = await PFA.findOne({
+      emailSent: true,
+      stutus: { $ne: "rejected" },
+    });
+    const emailResults = await sendPfaEmail(
+      isSecondSend,
+      "http://ISAMM.com/pfa-list"
+    );
+    const pfaAlferPublished = await getAllPFEPublished();
     return res.status(200).json({
-      message:
-        response === "true"
-          ? "PFAs published successfully."
-          : "PFAs hidden successfully.",
+      message: "PFAs hidden successfully.",
       choicePeriod: periodResponse
         ? periodResponse.period
-        : "No choice period was modified or provided.",
-      pfas: updatedPfas,
+        : "You have not modified/provided a choice period.",
+      pfas: pfaAlferPublished,
+      emailResults,
     });
   } catch (error) {
     res
@@ -1411,44 +1450,5 @@ export const getTeacherPlannings = async (req, res) => {
     return res
       .status(500)
       .json({ message: "Error retrieving plannings.", error });
-  }
-};
-
-export const getPFAs = async (req, res) => {
-  try {
-    console.log("Requête reçue pour récupérer les PFAs");
-
-    const pfas = await PFA.find()
-      .populate({
-        path: "Students",
-        select: "firstName lastName",
-      })
-      .populate({
-        path: "teacher",
-        select: "firstName lastName",
-      });
-
-    // Format des résultats
-    const formattedPFAs = pfas.map((pfa) => ({
-      _id: pfa._id,
-      title: pfa.title,
-      description: pfa.description,
-      technologies: pfa.technologies,
-      mode: pfa.mode,
-      status: pfa.status,
-      year: pfa.year,
-      students:
-        pfa.Students.length > 0
-          ? pfa.Students.map((s) => `${s.firstName} ${s.lastName}`)
-          : [],
-      teacher: pfa.teacher
-        ? `${pfa.teacher.firstName} ${pfa.teacher.lastName}`
-        : "Pas encore",
-    }));
-
-    return res.status(200).json(formattedPFAs);
-  } catch (error) {
-    console.error("Erreur lors de la récupération des PFAs :", error);
-    return res.status(500).json({ error: "Erreur interne du serveur" });
   }
 };
