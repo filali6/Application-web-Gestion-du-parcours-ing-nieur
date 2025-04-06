@@ -61,37 +61,35 @@ export const createSubject = async (req, res) => {
 // get subjects
 export const getSubjects = async (req, res) => {
   try {
-    const filter = req.yearFilter || {};
-    const { role, userId } = req.auth;
+   const filter = req.yearFilter || {};
+   const { role, userId } = req.auth;
 
-    let subjects;
+   let query = { ...filter };
 
-    if (role === "admin") {
-      subjects = await Subject.find(filter).populate(
-        "assignedTeacher",
-        "firstName lastName email"
-      );
-    } else if (role === "student") {
-      subjects = await Subject.find({
-        isPublished: true,
-      });
-    } else if (role === "teacher") {
-      subjects = await Subject.find({
-        // assignedTeacher: userId,
-        isPublished: true,
-      });
-    } else {
-      return res.status(403).json({ error: "Access denied." });
-    }
+   if (role === "admin") {
+     // Admin sees everything, no extra filters
+   } else if (role === "teacher") {
+     // Teacher sees only published subjects assigned to them
+     query.assignedTeacher = userId;
+     query.isPublished = true;
+   } else if (role === "student") {
+     // Student sees only published subjects assigned to them
+     query.assignedStudent = userId;
+     query.isPublished = true;
+   } else {
+     return res.status(403).json({ error: "Access denied." });
+   }
 
-    res.status(200).json(subjects);
-  } catch (error) {
-    console.error("Error fetching subjects:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while fetching subjects." });
-  }
+   const subjects = await Subject.find(query)
+     .populate("assignedTeacher", "firstName lastName email");
+
+   res.status(200).json(subjects);
+ } catch (error) {
+   console.error("Error fetching subjects:", error);
+   res.status(500).json({ error: "An error occurred while fetching subjects." });
+ }
 };
+
 
 //publish unpublish
 export const publishUnpublishAllSubjects = async (req, res) => {
