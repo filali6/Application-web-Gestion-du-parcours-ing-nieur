@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "react-bootstrap";
-import SearchBar from "../Fields/SearchBar";
+import SearchBar from "./../Fields/SearchBar";
 import GenericTable from "./GenericTable";
 
 const GenericList = ({
   title,
-  items: externalItems, // ✅ Ajout de la prop `items
   fetchItems,
   columns,
   statusMap,
@@ -36,11 +35,7 @@ const GenericList = ({
     };
 
     fetchData();
-  }, [externalItems, filterValues, fetchItems]); //
-
-  useEffect(() => {
-    if (externalItems) setItems(externalItems);
-  }, [externalItems]);
+  }, [filterValues, fetchItems]);
 
   const filteredItems = items.filter((item) => {
     if (!item) return false;
