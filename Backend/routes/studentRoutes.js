@@ -9,7 +9,6 @@ import {
   importStudents,
   decryptStudentPassword,
   updateProfile,
-  getStudentsPFA
 } from "../controllers/studentController.js";
 import { validateStudent } from "../middlewares/studentValidate.js";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
@@ -52,12 +51,6 @@ router.get(
   isAdminOrTeacher, // Vérifie que l'utilisateur est un administrateur
   yearFilter,
   getStudents // Contrôleur pour récupérer la liste des étudiants
-);
-router.get(
-  "/studentsPFA",
-  loggedMiddleware, // Vérifie le token et ajoute req.auth
-  isAdminOrTeacher, // Vérifie que l'utilisateur est un administrateur
-  getStudentsPFA // Contrôleur pour récupérer la liste des étudiants
 );
 
 // récupérer un étudiant par ID

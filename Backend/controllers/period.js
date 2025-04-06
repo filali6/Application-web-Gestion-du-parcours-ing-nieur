@@ -2,22 +2,13 @@ import Period from "../models/Period.js";
 
 export const addPeriod = async (req, res) => {
   try {
+    console.log("hh22222h");
+
     const { StartDate, EndDate, type } = req.body;
-    const existingPeriod = await Period.findOne({
-      type: type,
-      $or: [
-        {
-          StartDate: { $lte: new Date(EndDate) },
-          EndDate: { $gte: new Date(StartDate) },
-        },
-        {
-          StartDate: { $gte: new Date(StartDate) },
-          EndDate: { $lte: new Date(EndDate) },
-        },
-      ],
-    });
+    const existingPeriod = await Period.findOne({ type: type });
 
     if (existingPeriod) {
+      console.log("hhh");
       return res.status(400).json({
         error: `A period of type ${type} is already open during this time frame.`,
       });
