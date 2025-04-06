@@ -21,9 +21,7 @@ import {
   getPlanningByStudent,
   publishOrUnpublishPlannings,
   modifyPlanning,
-  getTeacherPlannings,
-  sendPfaEmail,
-  getPFAs
+  getTeacherPlannings
 } from "../controllers/Pfa.js";
 import {
   assignManuallyPfa,
@@ -50,9 +48,6 @@ router.patch("/assign/autoassign", autoAssignPFAS);
 router.patch("/:id/assign/student/:studentId", assignManuallyPfa);
 router.post("/publishAll/:response", publishOrUnpublishAllPFAs);
 router.post("/list/send", sendPFAValidation);
-
-router.get("/getPFAs", loggedMiddleware, isAdmin, getPFAs);
-router.post("/list/sendEmails", loggedMiddleware, isAdmin, sendPfaEmail);
 
 router.post("/generateSoutenances" , loggedMiddleware, isAdmin, generatePlanning)
 router.get("/getPlanningByTeacher/:id" ,loggedMiddleware, isAdmin, getPlanningByTeacher)
