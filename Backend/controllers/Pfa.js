@@ -115,12 +115,24 @@ export const addMultiplePfas = async (req, res) => {
           error: `Invalid mode for subject "${title}". Must be 'monome' or 'binome'.`,
         });
       }
-
+      const allStudentsInCurrentPfas = new Set(); // Set to collect all students in current batch
       // Validate and process student IDs if provided
       if (Students.length > 0) {
         const invalidStudents = [];
-        const uniqueStudentIds = new Set(Students); // Use a Set to avoid duplicates
+        const uniqueStudentIds = new Set(Students); // Unique student IDs in this PFA
 
+        // Check if students are already in the same batch of PFAs
+        for (const studentId of uniqueStudentIds) {
+          if (allStudentsInCurrentPfas.has(studentId)) {
+            return res.status(400).json({
+              error: `Student is already assigned to another subject in this batch.`,
+            });
+          }
+
+          allStudentsInCurrentPfas.add(studentId); // Add student to the set for comparison with next PFAs
+        }
+
+        // Check for invalid student IDs
         for (const studentId of uniqueStudentIds) {
           const student = await Student.findById(studentId); // Check if the student exists in the database
           if (!student) {
@@ -136,11 +148,12 @@ export const addMultiplePfas = async (req, res) => {
           });
         }
 
-        // Check for duplicate assignments
+        // Check for duplicate assignments across existing PFAs
         const assignedStudents = await PFA.find({
           Students: { $in: Students },
         });
-        console.log("assignedStudents", assignedStudents);
+        console.log("hhhhh", assignedStudents);
+        console.log("hhhhh2", Students);
         if (assignedStudents.length > 0) {
           // Collect all assigned student IDs
           const assignedStudentIds = assignedStudents.flatMap(
@@ -148,9 +161,7 @@ export const addMultiplePfas = async (req, res) => {
           );
 
           return res.status(400).json({
-            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(
-              ", "
-            )}`,
+            error: "Some students are already assigned to other subjects",
           });
         }
       }
@@ -221,7 +232,7 @@ export const addMultiplePfas = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-//2.2
+
 export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
@@ -259,7 +270,9 @@ export const updateMyPfa = async (req, res) => {
         error: `Invalid mode for subject "${title}". Must be 'monome' or 'binome'.`,
       });
     }
+
     // Validate student IDs if Students are provided
+
     if (Students.length > 0) {
       const invalidStudents = [];
       const uniqueStudentIds = new Set(Students); // Use a Set to avoid duplicates
@@ -278,10 +291,8 @@ export const updateMyPfa = async (req, res) => {
           )}`,
         });
       }
-
       // Check for duplicate assignments
       const assignedStudents = await PFA.find({ Students: { $in: Students } });
-      console.log("assignedStudents", assignedStudents);
       if (assignedStudents.length > 0) {
         // Collect all assigned student IDs
         const assignedStudentIds = assignedStudents.flatMap(
@@ -289,9 +300,7 @@ export const updateMyPfa = async (req, res) => {
         );
 
         return res.status(400).json({
-          error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(
-            ", "
-          )}`,
+          error: "Some students are already assigned to other subjects",
         });
       }
     }
