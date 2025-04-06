@@ -90,6 +90,8 @@ export const addMultiplePfas = async (req, res) => {
 
     const newPfas = []; // Array to store validated and constructed PFAs
 
+    const allStudentsInCurrentPfas = new Set(); // Set to collect all students in current batch
+
     for (const pfa of pfas) {
       const {
         title,
@@ -115,7 +117,7 @@ export const addMultiplePfas = async (req, res) => {
           error: `Invalid mode for subject "${title}". Must be 'monome' or 'binome'.`,
         });
       }
-      const allStudentsInCurrentPfas = new Set(); // Set to collect all students in current batch
+
       // Validate and process student IDs if provided
       if (Students.length > 0) {
         const invalidStudents = [];
@@ -152,8 +154,7 @@ export const addMultiplePfas = async (req, res) => {
         const assignedStudents = await PFA.find({
           Students: { $in: Students },
         });
-        console.log("hhhhh", assignedStudents);
-        console.log("hhhhh2", Students);
+        console.log("assignedStudents", assignedStudents);
         if (assignedStudents.length > 0) {
           // Collect all assigned student IDs
           const assignedStudentIds = assignedStudents.flatMap(
@@ -161,7 +162,7 @@ export const addMultiplePfas = async (req, res) => {
           );
 
           return res.status(400).json({
-            error: "Some students are already assigned to other subjects",
+            error: "Some students are already assigned to other subjects"
           });
         }
       }
@@ -232,6 +233,7 @@ export const addMultiplePfas = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const updateMyPfa = async (req, res) => {
   try {
@@ -312,7 +314,7 @@ export const updateMyPfa = async (req, res) => {
           error: `Subject "${currenttitle}" requires exactly 2 students for binome mode.`,
         });
       }
-
+console.log("stydents", Students)
       // Check if the two student IDs are the same
       if (Students[0] === Students[1]) {
         return res.status(400).json({
