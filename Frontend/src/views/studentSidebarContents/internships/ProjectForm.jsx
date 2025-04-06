@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { addTopic } from "services/internshipservicesstudent";
 import { useNavigate } from "react-router-dom";
-import "./Form.css"
-const ProjectForm = ({onTopicAdded,onClose}) => {
+import { Modal, Button, Form, InputGroup } from "react-bootstrap";
+
+const ProjectForm = ({ onTopicAdded, onClose }) => {
   const [titre, setTitre] = useState("");
   const [documents, setDocuments] = useState(null);
-  const navigate= useNavigate();
+  const navigate = useNavigate();
 
   const handleFileChange = (e) => {
     setDocuments(e.target.files);
@@ -26,12 +27,9 @@ const ProjectForm = ({onTopicAdded,onClose}) => {
       const result = await addTopic(formData);
       alert("Sujet déposé avec succès !");
       console.log(result);
-      // Appeler la fonction pour mettre à jour la liste des sujets
       if (onTopicAdded) onTopicAdded(result);
-
-      // Naviguer vers la page MyInternships
       navigate("/myinternships");
-      if (onClose) onClose(); 
+      if (onClose) onClose();
     } catch (error) {
       alert("Erreur lors du dépôt du sujet.");
       console.error("Erreur lors du dépôt du sujet :", error);
@@ -39,49 +37,45 @@ const ProjectForm = ({onTopicAdded,onClose}) => {
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        {/* Close Button */}
-        <button className="close-btn" onClick={onClose}>
-          ✖
-        </button>
+    <Modal show={true} onHide={onClose} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>Déposer un sujet</Modal.Title>
+      </Modal.Header>
 
-        <h2>Déposer un sujet</h2>
-
-        <form onSubmit={handleSubmit} className="project-form">
-          {/* Title Input */}
-          <div className="input-group">
-            <input
+      <Modal.Body>
+        <Form onSubmit={handleSubmit}>
+          {/* Titre Input */}
+          <Form.Group controlId="titre">
+            <Form.Label>Titre du sujet</Form.Label>
+            <Form.Control
               type="text"
-              placeholder="Titre du sujet"
+              placeholder="Entrez le titre du sujet"
               value={titre}
               onChange={(e) => setTitre(e.target.value)}
               required
-              className="form-input"
             />
-          </div>
+          </Form.Group>
 
           {/* File Upload */}
-          <div className="file-upload">
-            <input
-              type="file"
-              id="file"
-              multiple
-              onChange={handleFileChange}
-              className="file-input"
-            />
-            <label htmlFor="file" className="file-label">
-              📎 Choisir des fichiers
-            </label>
-          </div>
+          <Form.Group controlId="documents">
+            <Form.Label>Choisir des fichiers</Form.Label>
+            <InputGroup>
+              <Form.Control
+                type="file"
+                multiple
+                onChange={handleFileChange}
+                required
+              />
+            </InputGroup>
+          </Form.Group>
 
           {/* Submit Button */}
-          <button type="submit" className="submit-button">
+          <Button variant="success" type="submit" className="w-100 mt-3">
             Déposer le sujet
-          </button>
-        </form>
-      </div>
-    </div>
+          </Button>
+        </Form>
+      </Modal.Body>
+    </Modal>
   );
 };
 

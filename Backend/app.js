@@ -23,6 +23,12 @@ import scheduleCronJobs1 from "./notifyWithMail/LateSubmissionCronJob.js";
 import cvRoutes from "./routes/cv.js";
 import saisonRoutes from "./routes/saison.js";
 import startCronJob from "./notifyWithMail/cvUpdate.js";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Obtenez le nom de fichier actuel avec import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 //SWAGGER//
 import swaggerUi from "swagger-ui-express";
@@ -33,7 +39,7 @@ const app = express();
 //MIDDLEWARES//
 app.use(cors());
 app.use(express.json());
-
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 //READ SWAGGER FILE//
 const json = JSON.parse(
   await readFile(new URL("./swagger-output.json", import.meta.url))
