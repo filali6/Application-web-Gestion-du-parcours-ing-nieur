@@ -23,6 +23,20 @@ export const generatePassword = (length = 12) => {
 };
 
 // ajouter un étudiant
+export const getStudentsPFA = async (req, res) => {
+  try {
+    const Students = await Student.find({
+      level: 2,
+    }).select("-password -encryptedPassword");
+
+    res.status(200).json(Students);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des étudiants", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la récupération des étudiants.",
+    });
+  }
+};
 export const addStudent = async (req, res) => {
   try {
     const studentData = req.body;

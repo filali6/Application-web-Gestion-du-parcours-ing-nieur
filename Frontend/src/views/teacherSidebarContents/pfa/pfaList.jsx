@@ -3,8 +3,8 @@ import { Table, Button, Space } from "antd";
 import { EditOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import Swal from "sweetalert2";
 import { getMyPfas, deletePfa } from "../../../services/pfaService";
-import AddPfaModal from "./pfaForm";
-import EditPfaModal from "./editPfaForm";
+import AddPfaModal from "./pfaForm"; // Formulaire d'ajout de plusieurs PFAs
+import EditPfaModal from "./editPfaForm"; // Formulaire de mise à jour
 
 const PfaList = () => {
   const [pfas, setPfas] = useState([]);
@@ -19,58 +19,41 @@ const PfaList = () => {
   const fetchPfas = async () => {
     try {
       const response = await getMyPfas();
-
-      if (response.data.pfas && response.data.pfas.length === 0) {
-        setPfas([]);
-        Swal.fire({
-          title: "Aucun sujet trouvé",
-          text: "Vous n'avez pas encore créé de sujets PFA.",
-          icon: "info",
-          confirmButtonColor: "#1890ff",
-        });
-      } else {
-        setPfas(response.data.pfas);
-      }
+      setPfas(response.data.pfas);
     } catch (error) {
-      if (error.response && error.response.status !== 404) {
-        Swal.fire({
-          title: "Erreur",
-          text: "Une erreur est survenue lors du chargement des sujets",
-          icon: "error",
-          confirmButtonColor: "#1890ff",
-        });
-      }
-      setPfas([]);
+      Swal.fire("Erreur", "Impossible de récupérer les PFAs", "error");
     }
   };
 
   const handleDelete = async (id) => {
     const confirm = await Swal.fire({
-      title: "Are you sure?",
-      text: "This action is irreversible!",
+      title: "Êtes-vous sûr ?",
+      text: "Cette action est irréversible !",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
-      confirmButtonText: "Yes, delete!",
+      confirmButtonText: "Oui, supprimer !",
     });
 
     if (confirm.isConfirmed) {
       try {
         await deletePfa(id);
-
-        setPfas((prevPfas) => prevPfas.filter((pfa) => pfa._id !== id));
-
-        await Swal.fire("Deleted!", "The PFA has been deleted.", "success");
-      } catch (error) {
+        Swal.fire("Supprimé !", "Le PFA a été supprimé.", "success");
         fetchPfas();
-
-        if (error.response?.data?.error) {
-          Swal.fire("Error", error.response.data.error, "error");
+      } catch (error) {
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.error
+        ) {
+          // Afficher l'erreur spécifique du backend
+          Swal.fire("Erreur", error.response.data.error, "error");
         } else {
+          // Message générique en cas d'erreur inattendue
           Swal.fire(
-            "Error",
-            "Unable to delete PFA. Please try again.",
+            "Erreur",
+            "Impossible de supprimer le PFA. Veuillez réessayer.",
             "error"
           );
         }
@@ -93,7 +76,7 @@ const PfaList = () => {
             (student) => `${student.firstName} ${student.lastName}`
           ).join(", ");
         }
-        return "Not assigned";
+        return "Non attribué";
       },
     },
     {
@@ -130,11 +113,11 @@ const PfaList = () => {
                     <br />
                     👨‍🏫 Accepté :{" "}
                     <span style={choice.acceptedByTeacher ? yesStyle : noStyle}>
-                      {choice.acceptedByTeacher ? "Yes" : "No"}
+                      {choice.acceptedByTeacher ? "Oui" : "Non"}
                     </span>
                     <br />✅ Validé :{" "}
                     <span style={choice.validation ? yesStyle : noStyle}>
-                      {choice.validation ? "Yes" : "No"}
+                      {choice.validation ? "Oui" : "Non"}
                     </span>
                   </div>
                 );
@@ -142,7 +125,7 @@ const PfaList = () => {
             </div>
           );
         }
-        return "No choice";
+        return "Aucun choix";
       },
     },
 
@@ -160,15 +143,16 @@ const PfaList = () => {
               setIsEditModalOpen(true);
             }}
             style={{ color: "#1890ff", borderColor: "#1890ff" }}
-            title="Update"
+            title="Modifier"
           />
+
           <Button
             type="default"
             danger
             shape="circle"
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record._id)}
-            title="Delete"
+            title="Supprimer"
           />
         </Space>
       ),
@@ -183,7 +167,7 @@ const PfaList = () => {
         onClick={() => setIsAddModalOpen(true)}
         style={{ marginBottom: 16 }}
       >
-        Add PFAs
+        Ajouter PFAs
       </Button>
 
       <Table columns={columns} dataSource={pfas} rowKey="_id" />
