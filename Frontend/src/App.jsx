@@ -1,18 +1,20 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, useNavigate } from 'react-router-dom';
 import routes, { renderRoutes } from './routes';
-
+ 
+  
 const AppWithAuthSync = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
     const syncAuth = (event) => {
+ 
       if (event.key === 'token') {
         if (event.newValue) {
-          // Logged in from another tab
+           // Logged in from another tab
           navigate('/dashboard');
         } else {
-          // Logged out from another tab
+           // Logged out from another tab
           navigate('/auth/signin');
           document.title = 'Welcome | ISAMM PLATEFORM';
         }
@@ -30,6 +32,7 @@ const App = () => {
   return (
     <BrowserRouter basename={import.meta.env.VITE_APP_BASE_NAME}>
       <AppWithAuthSync />
+       
     </BrowserRouter>
   );
 };
