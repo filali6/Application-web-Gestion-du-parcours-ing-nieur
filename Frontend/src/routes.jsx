@@ -107,7 +107,6 @@ const routes = [
           () =>
             import("./views/adminSidebarContents/internships/ManageInternships")
         ),
-        
       },
       {
         path: "/periode/manage-periode",
@@ -152,8 +151,14 @@ const routes = [
         ),
       },
       {
-        path: "/pfa/my-pfa",
+        path: "/pfa/my-pfa", // 4.1
         element: lazy(() => import("./views/studentSidebarContents/pfa/myPFA")),
+      },
+      {
+        path: "/pfa/choose/:id", //5.1/5.2
+        element: lazy(
+          () => import("./views/studentSidebarContents/pfa/ChoosePFA")
+        ),
       },
       {
         path: "/internships/my-internships",

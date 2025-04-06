@@ -61,7 +61,7 @@ const validateOwnership = async (pfaId, teacherId) => {
 };
 
 /**
- * Add multiple PFAs
+ * Add multiple PFAs 2.1
  */
 export const addMultiplePfas = async (req, res) => {
   try {
@@ -84,7 +84,14 @@ export const addMultiplePfas = async (req, res) => {
     const newPfas = []; // Array to store validated and constructed PFAs
 
     for (const pfa of pfas) {
-      const { title, description, technologies, mode, Students = [], year } = pfa;
+      const {
+        title,
+        description,
+        technologies,
+        mode,
+        Students = [],
+        year,
+      } = pfa;
 
       // Check required fields
       if (!title || !description || !mode || !year) {
@@ -116,7 +123,9 @@ export const addMultiplePfas = async (req, res) => {
 
         if (invalidStudents.length > 0) {
           return res.status(400).json({
-            error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+            error: `The following student IDs are invalid: ${invalidStudents.join(
+              ", "
+            )}`,
           });
         }
 
@@ -127,17 +136,21 @@ export const addMultiplePfas = async (req, res) => {
         console.log("assignedStudents", assignedStudents);
         if (assignedStudents.length > 0) {
           // Collect all assigned student IDs
-          const assignedStudentIds = assignedStudents.flatMap((pfa) => pfa.Students);
+          const assignedStudentIds = assignedStudents.flatMap(
+            (pfa) => pfa.Students
+          );
 
           return res.status(400).json({
-            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(", ")}`,
+            error: `Some students are already assigned to other subjects: ${assignedStudentIds.join(
+              ", "
+            )}`,
           });
         }
       }
 
       // Validate student count based on mode
       if (mode === "binome") {
-        if (Students.length !== 2) {
+        if (Students.length > 2) {
           return res.status(400).json({
             error: `Subject "${title}" requires exactly 2 students for binome mode.`,
           });
@@ -150,7 +163,7 @@ export const addMultiplePfas = async (req, res) => {
         }
       }
 
-      if (mode === "monome" && Students.length !== 1) {
+      if (mode === "monome" && Students.length > 1) {
         return res.status(400).json({
           error: `Subject "${title}" requires exactly 1 student for monome mode.`,
         });
@@ -160,7 +173,9 @@ export const addMultiplePfas = async (req, res) => {
       const currentYear = new Date().getFullYear();
       if (typeof year !== "number" || year < 2000 || year > currentYear + 1) {
         return res.status(400).json({
-          error: `Invalid year for subject "${title}". Year must be between 2000 and ${currentYear + 1}.`,
+          error: `Invalid year for subject "${title}". Year must be between 2000 and ${
+            currentYear + 1
+          }.`,
         });
       }
 
@@ -199,12 +214,19 @@ export const addMultiplePfas = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
+//2.2
 export const updateMyPfa = async (req, res) => {
   try {
     const teacherId = req.auth.userId; // Get the teacher's ID from the authenticated request
     const { id } = req.params; // Extract the PFA ID from the request parameters
-    const { title, description, technologies, mode, Students = [], year } = req.body; // Extract the updated data from the request body
+    const {
+      title,
+      description,
+      technologies,
+      mode,
+      Students = [],
+      year,
+    } = req.body; // Extract the updated data from the request body
 
     // Validate ownership of the PFA
     const pfa = await validateOwnership(id, teacherId);
@@ -244,7 +266,9 @@ export const updateMyPfa = async (req, res) => {
 
       if (invalidStudents.length > 0) {
         return res.status(400).json({
-          error: `The following student IDs are invalid: ${invalidStudents.join(", ")}`,
+          error: `The following student IDs are invalid: ${invalidStudents.join(
+            ", "
+          )}`,
         });
       }
 
@@ -292,9 +316,14 @@ export const updateMyPfa = async (req, res) => {
 
     // Validate the year if provided
     const currentYear = new Date().getFullYear();
-    if (year && (typeof year !== "number" || year < 2000 || year > currentYear + 1)) {
+    if (
+      year &&
+      (typeof year !== "number" || year < 2000 || year > currentYear + 1)
+    ) {
       return res.status(400).json({
-        error: `Invalid year. Year must be between 2000 and ${currentYear + 1}.`,
+        error: `Invalid year. Year must be between 2000 and ${
+          currentYear + 1
+        }.`,
       });
     }
 
@@ -341,7 +370,6 @@ export const updateMyPfa = async (req, res) => {
   }
 };
 
-
 /**
  * Get all PFAs for the logged-in teacher
  */
@@ -351,7 +379,11 @@ export const getMyPfas = async (req, res) => {
     const myPfas = await PFA.find({ teacher: teacherId })
       .populate({
         path: "Students",
-        select: "firstName lastName", // Only select firstName and lastName
+        select: "firstName lastName",
+      })
+      .populate({
+        path: "choices.student",
+        select: "firstName lastName",
       })
       .lean();
 
@@ -676,7 +708,7 @@ export const publishPFA = async (req, res) => {
       .json({ error: "Internal error while publishing or hiding PFA." });
   }
 };
-
+//4.1
 export const listPFAByTeacher = async (req, res) => {
   try {
     const result = await PFA.aggregate([
@@ -705,12 +737,22 @@ export const listPFAByTeacher = async (req, res) => {
           as: "periodChoiceDetails",
         },
       },
+      // Récupère les infos COMPLÈTES des étudiants assignés (Students)
+      {
+        $lookup: {
+          from: "students",
+          localField: "Students",
+          foreignField: "_id",
+          as: "studentsFullDetails",
+        },
+      },
+      // Récupère les infos COMPLÈTES des étudiants ayant fait des choix (choices.student)
       {
         $lookup: {
           from: "students",
           localField: "choices.student",
           foreignField: "_id",
-          as: "studentDetails",
+          as: "choicesStudentsFullDetails",
         },
       },
       {
@@ -721,11 +763,23 @@ export const listPFAByTeacher = async (req, res) => {
           nbSujets: { $sum: 1 },
           sujets: {
             $push: {
+              _id: "$_id",
               title: "$title",
               description: "$description",
               mode: "$mode",
               status: "$status",
-              StudentsNames: "$StudentsNames",
+              // Étudiants assignés (avec nom/prénom)
+              students: {
+                $map: {
+                  input: "$studentsFullDetails",
+                  as: "student",
+                  in: {
+                    _id: "$$student._id",
+                    firstName: "$$student.firstName",
+                    lastName: "$$student.lastName",
+                  },
+                },
+              },
               emailSent: "$emailSent",
               dateDeposit: {
                 StartDateDeposit: {
@@ -741,14 +795,35 @@ export const listPFAByTeacher = async (req, res) => {
                   $arrayElemAt: ["$periodChoiceDetails.EndDate", 0],
                 },
               },
+              // Choix avec infos complètes des étudiants
               choices: {
                 $map: {
                   input: "$choices",
                   as: "choice",
                   in: {
-                    studentId: "$$choice.student",
+                    // Garde les infos originales du choix
                     priority: "$$choice.priority",
                     acceptedByTeacher: "$$choice.acceptedByTeacher",
+                    // Ajoute les infos de l'étudiant
+                    student: {
+                      $mergeObjects: [
+                        { _id: "$$choice.student" },
+                        {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: "$choicesStudentsFullDetails",
+                                as: "stu",
+                                cond: {
+                                  $eq: ["$$stu._id", "$$choice.student"],
+                                },
+                              },
+                            },
+                            0,
+                          ],
+                        },
+                      ],
+                    },
                   },
                 },
               },
@@ -803,6 +878,8 @@ const getAllPFEPublished = async () => {
   return await PFA.find({ status: "published" });
 };
 
+//5.1
+
 export const selectPfaChoice = async (req, res) => {
   try {
     const { id } = req.params; // ID du PFA
@@ -846,15 +923,6 @@ export const selectPfaChoice = async (req, res) => {
       });
     }
 
-    // Vérifier si Students[] est vide
-    if (pfa.Students.length > 0) {
-      return res.status(400).json({
-        error: "Subject is temporarily assigned for now.",
-        error:
-          "Subject is not available for selection. Only published subjects can be selected.",
-      });
-    }
-
     // Vérifier si l'étudiant a déjà choisi ce sujet
     const existingChoice = pfa.choices.find(
       (choice) => choice.student.toString() === studentId
@@ -862,6 +930,13 @@ export const selectPfaChoice = async (req, res) => {
     if (existingChoice) {
       return res.status(400).json({
         error: "You have already selected this subject.",
+      });
+    }
+
+    // Vérifier si Students[] est vide
+    if (pfa.Students.length > 0) {
+      return res.status(400).json({
+        error: "Subject is temporarily assigned for now.",
       });
     }
 
@@ -1246,101 +1321,112 @@ const sendEmailsToInvolved = async (
 };
 export const modifyPlanning = async (req, res) => {
   try {
-      const { encadrant, rapporteur, room, date, timeSlot } = req.body;
-      const { id } = req.params;
+    const { encadrant, rapporteur, room, date, timeSlot } = req.body;
+    const { id } = req.params;
 
-      const existingPlanning = await PlanningPfa.findById(id);
-      if (!existingPlanning) {
-          return res.status(404).json({ message: "Planning entry not found." });
+    const existingPlanning = await PlanningPfa.findById(id);
+    if (!existingPlanning) {
+      return res.status(404).json({ message: "Planning entry not found." });
+    }
+
+    let planningUpdated = {};
+
+    planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
+    planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
+    planningUpdated.room = room || existingPlanning.room;
+    planningUpdated.date = date || existingPlanning.date;
+    planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
+
+    let conflictingPlanning = null;
+
+    if (!date && !rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
+      }
+    }
+
+    if (date) {
+      const existingSoutenancesForDay = await PlanningPfa.countDocuments({
+        date: date,
+      });
+
+      if (existingSoutenancesForDay >= 6) {
+        return res.status(400).json({
+          message:
+            "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day.",
+        });
       }
 
-      let planningUpdated = {};
-
-      planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
-      planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
-      planningUpdated.room = room || existingPlanning.room;
-      planningUpdated.date = date || existingPlanning.date;
-      planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
-
-      let conflictingPlanning = null;
-
-      if (!date  && !rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+      conflictingPlanning = await PlanningPfa.findOne({
+        room: planningUpdated.room,
+        date: planningUpdated.date,
+        timeSlot: planningUpdated.timeSlot,
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected room, date, or time slot is already occupied.",
+        });
       }
+    }
 
-      if (date) {
-          const existingSoutenancesForDay = await PlanningPfa.countDocuments({ date: date });
-
-          if (existingSoutenancesForDay >= 6) {
-              return res.status(400).json({
-                  message: "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day."
-              });
-          }
-
-          conflictingPlanning = await PlanningPfa.findOne({
-              room: planningUpdated.room,
-              date: planningUpdated.date,
-              timeSlot: planningUpdated.timeSlot
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected room, date, or time slot is already occupied."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        rapporteur: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected rapporteur is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              rapporteur: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot,  
-              _id: { $ne: existingPlanning._id } 
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected rapporteur is already occupied at the same time and date."
-              });
-          }
+    if (rapporteur) {
+      conflictingPlanning = await PlanningPfa.findOne({
+        encadrant: rapporteur,
+        date: existingPlanning.date,
+        timeSlot: existingPlanning.timeSlot,
+        _id: { $ne: existingPlanning._id },
+      });
+      if (conflictingPlanning) {
+        return res.status(400).json({
+          message:
+            "Conflict detected: The selected encadrant is already occupied at the same time and date.",
+        });
       }
+    }
 
-      if (rapporteur) {
-          conflictingPlanning = await PlanningPfa.findOne({
-              encadrant: rapporteur,  
-              date: existingPlanning.date,  
-              timeSlot: existingPlanning.timeSlot, 
-              _id: { $ne: existingPlanning._id }  
-          });
-          if (conflictingPlanning) {
-              return res.status(400).json({
-                  message: "Conflict detected: The selected encadrant is already occupied at the same time and date."
-              });
-          }
-      }
+    existingPlanning.encadrant = planningUpdated.encadrant;
+    existingPlanning.rapporteur = planningUpdated.rapporteur;
+    existingPlanning.room = planningUpdated.room;
+    existingPlanning.date = planningUpdated.date;
+    existingPlanning.timeSlot = planningUpdated.timeSlot;
 
-      existingPlanning.encadrant = planningUpdated.encadrant;
-      existingPlanning.rapporteur = planningUpdated.rapporteur;
-      existingPlanning.room = planningUpdated.room;
-      existingPlanning.date = planningUpdated.date;
-      existingPlanning.timeSlot = planningUpdated.timeSlot;
+    await existingPlanning.save();
 
-      await existingPlanning.save();
-
-      return res.status(200).json({ message: "Planning updated successfully.", planning: existingPlanning });
+    return res.status(200).json({
+      message: "Planning updated successfully.",
+      planning: existingPlanning,
+    });
   } catch (error) {
-      console.error(error);
-      return res.status(500).json({ message: "Error modifying the planning.", error });
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Error modifying the planning.", error });
   }
 };
-
 
 export const getTeacherPlannings = async (req, res) => {
   try {
