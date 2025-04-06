@@ -92,13 +92,6 @@ const ManagePFA = () => {
           }
 
           loadPFAs();
-          Swal.fire(
-            "Succès",
-            hasPublishedOrPending
-              ? "Tous les PFAs ont été masqués."
-              : "Tous les PFAs ont été publiés.",
-            "success"
-          );
         } catch (error) {
           const errorMessage =
             error.response?.data?.error ||
