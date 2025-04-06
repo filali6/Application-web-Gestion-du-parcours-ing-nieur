@@ -18,6 +18,7 @@ import {
   updateTeacherForPlan,
 } from "./serviceInternshipAdmin";
 import UpdatePlanModal from "./updatePlan";
+import SendMailModal from "./sendMail";
 
 const TeacherTable = () => {
   const [teachers, setTeachers] = useState([]);
@@ -29,6 +30,8 @@ const TeacherTable = () => {
   const [selectedTeachers, setSelectedTeachers] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedEmailPlan, setSelectedEmailPlan] = useState(null);
 
   useEffect(() => {
     const loadTeachers = async () => {
@@ -92,12 +95,19 @@ const TeacherTable = () => {
   const togglePopup = () => {
     setShowPopup(!showPopup);
   };
+   
 
   const handleOpenUpdateModal = (plan) => {
     setSelectedPlan(plan);
     setShowPopup(true); // Ouvre le modal
   };
-
+const handleOpenEmailModal = (plan) => {
+  setSelectedEmailPlan(plan);
+  setShowEmailModal(true);
+};
+const toggleEmailPopup = () => {
+  setShowEmailModal(!showEmailModal);
+};
   // Nouvelle fonction pour récupérer les plans et mettre à jour l'état
   const fetchAndUpdatePlans = async () => {
     try {
@@ -241,6 +251,16 @@ const TeacherTable = () => {
               >
                 {plans.every((p) => p.isPublished) ? "Masquer" : "Publier"}
               </MDBBtn>
+              {/* Nouveau bouton ajouté ici */}
+              <MDBBtn
+                color="primary"
+                rounded
+                size="sm"
+                className="ms-2"
+                onClick={toggleEmailPopup} // Remplacez cette fonction par ce que vous souhaitez faire
+              >
+                Envoyer Plannning
+              </MDBBtn>
             </div>
           )}
         </>
@@ -254,6 +274,9 @@ const TeacherTable = () => {
           onSubmit={handleUpdateTeacher}
           plan={selectedPlan}
         />
+      )}
+      {showEmailModal && (
+        <SendMailModal show={showEmailModal} toggleShow={toggleEmailPopup} />
       )}
     </div>
   );
