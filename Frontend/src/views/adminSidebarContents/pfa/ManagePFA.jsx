@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "react-bootstrap";
+import { Button, Modal } from "react-bootstrap";
 import Swal from "sweetalert2";
 import GenericList from "../../../components/Generic/GenericList";
 import {
@@ -9,6 +9,7 @@ import {
   sendPfaEmail,
   rejectPfa,
 } from "../../../services/pfaService";
+import PeriodTypeSelect from "../../../components/Fields/PeriodTypeSelect";
 import "../../../styles/pfa.css";
 
 // Définition des colonnes pour la table
@@ -31,9 +32,14 @@ const statusMap = {
 };
 
 const ManagePFA = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // ← Pour la navigation
+
   const [pfas, setPfas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState("");
+
+  const periodTypes = [{ value: "1", label: "Période de choix" }];
 
   useEffect(() => {
     loadPFAs();
@@ -43,9 +49,9 @@ const ManagePFA = () => {
     try {
       const data = await fetchPFAs();
       setPfas(data);
+      setLoading(false);
     } catch (error) {
       console.error("Erreur lors du chargement des PFAs:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -53,7 +59,6 @@ const ManagePFA = () => {
   const hasPublishedOrPending = pfas.some(
     (pfa) => pfa.status === "published" || pfa.status === "pending"
   );
-
   const publishButtonLabel = hasPublishedOrPending ? "Masquer" : "Publier";
 
   const handlePublish = async () => {
@@ -70,29 +75,23 @@ const ManagePFA = () => {
         try {
           await publishPFAs(hasPublishedOrPending ? "false" : "true");
 
-          const newStatus = hasPublishedOrPending ? "hidden" : "published";
-          setPfas((prevPfas) =>
-            prevPfas.map((pfa) => ({
-              ...pfa,
-              status: newStatus,
-            }))
-          );
-
           if (!hasPublishedOrPending) {
             Swal.fire({
-              title: "Souhaitez-vous aller à la gestion des périodes ?",
+              title: "Ouvrir/modifier la période de choix ?",
               icon: "info",
               showCancelButton: true,
               confirmButtonText: "Oui",
               cancelButtonText: "Non",
-            }).then((res) => {
-              if (res.isConfirmed) {
+            }).then((result) => {
+              if (result.isConfirmed) {
                 navigate("/periode/manage-periode", {
                   state: { fromManagePFA: true },
                 });
               }
             });
           }
+
+          loadPFAs();
         } catch (error) {
           const errorMessage =
             error.response?.data?.error ||
@@ -112,16 +111,11 @@ const ManagePFA = () => {
       cancelButtonText: "Annuler",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        try {
-          await sendPfaEmail();
-          Swal.fire("Envoyé !", "La liste des PFAs a été envoyée.", "success");
-        } catch (error) {
-          Swal.fire("Erreur", "Échec de l'envoi des emails.", "error");
-        }
+        await sendPfaEmail();
+        Swal.fire("Envoyé !", "La liste des PFAs a été envoyée.", "success");
       }
     });
   };
-
   const handleReject = async (id) => {
     Swal.fire({
       title: "Voulez-vous vraiment rejeter ce PFA ?",
@@ -133,13 +127,12 @@ const ManagePFA = () => {
       if (result.isConfirmed) {
         try {
           await rejectPfa(id);
-          Swal.fire("Succès", "Le PFA a été rejeté avec succès.", "success");
-
-          setPfas((prevPfas) =>
-            prevPfas.map((pfa) =>
+          setPfas((prevPFAs) =>
+            prevPFAs.map((pfa) =>
               pfa._id === id ? { ...pfa, status: "rejected" } : pfa
             )
           );
+          Swal.fire("Succès", "Le PFA a été rejeté avec succès.", "success");
         } catch (error) {
           const errorMessage =
             error.response?.data?.error || "Erreur lors du rejet du PFA.";
@@ -147,6 +140,19 @@ const ManagePFA = () => {
         }
       }
     });
+  };
+
+  const handlePeriodChange = (event) => {
+    setSelectedPeriod(event.target.value);
+  };
+
+  const handleConfirmPeriod = () => {
+    setShowPeriodModal(false);
+    Swal.fire(
+      "Période enregistrée",
+      `Vous avez choisi ${selectedPeriod}`,
+      "success"
+    );
   };
 
   const customRenderers = {
@@ -184,13 +190,45 @@ const ManagePFA = () => {
 
       <GenericList
         title="Liste des PFAs"
-        fetchItems={() => Promise.resolve(pfas)} // ✅ Utilise le state local
+        fetchItems={fetchPFAs}
         columns={columns}
         statusMap={statusMap}
         searchFields={["title", "students", "teacher", "year"]}
         customRenderers={customRenderers}
         noItemsMessage="Aucun PFA disponible"
+        items={pfas}
       />
+
+      {/* Modal de sélection de la période */}
+      <Modal
+        show={showPeriodModal}
+        onHide={() => setShowPeriodModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Choisir une période</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <PeriodTypeSelect
+            value={selectedPeriod}
+            onChange={handlePeriodChange}
+            periodTypes={periodTypes}
+            error={!selectedPeriod ? "Veuillez sélectionner une période" : ""}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPeriodModal(false)}>
+            Annuler
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleConfirmPeriod}
+            disabled={!selectedPeriod}
+          >
+            Confirmer
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

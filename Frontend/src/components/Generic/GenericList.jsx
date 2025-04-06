@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "react-bootstrap";
-import SearchBar from "./../Fields/SearchBar";
+import SearchBar from "../Fields/SearchBar";
 import GenericTable from "./GenericTable";
 
 const GenericList = ({
   title,
+  items: externalItems, // ✅ Ajout de la prop `items
   fetchItems,
   columns,
   statusMap,
@@ -12,6 +13,7 @@ const GenericList = ({
   searchFields = [],
   additionalFilters = null,
   noItemsMessage = "No items found",
+  reloadKey,
 }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,23 +21,34 @@ const GenericList = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [filterValues, setFilterValues] = useState({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const data = await fetchItems(filterValues, token);
-        setItems(Array.isArray(data) ? data : []);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error:", err);
-        setError(err.response?.data?.message || "Error fetching items");
-        setItems([]);
-        setLoading(false);
-      }
-    };
+ // useEffect pour récupérer les données via l'API (fetch)
+useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const data = await fetchItems(filterValues, token);
+      setItems(Array.isArray(data) ? data : []); // Mise à jour des items récupérés
+    } catch (err) {
+      console.error("Error:", err);
+      setError(err?.response?.data?.message || "Error fetching items");
+      setItems([]); // En cas d'erreur, réinitialise les items
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchData();
-  }, [filterValues, fetchItems]);
+  fetchData();
+}, [filterValues, fetchItems, reloadKey]); // Ce useEffect est responsable de la récupération des données
+
+// useEffect pour mettre à jour `items` si `externalItems` change
+useEffect(() => {
+  if (externalItems && externalItems.length) {
+    setItems(externalItems); // Si externalItems change, met à jour items
+  }
+}, [externalItems]); // Ce useEffect se déclenche uniquement quand externalItems change
+
 
   const filteredItems = items.filter((item) => {
     if (!item) return false;
