@@ -2,13 +2,7 @@ import React from "react";
 import { Form } from "react-bootstrap";
 import PropTypes from "prop-types";
 
-const PeriodTypeSelect = ({
-  value,
-  onChange,
-  error,
-  periodTypes,
-  restrictToChoiceForStudents,
-}) => (
+const PeriodTypeSelect = ({ value, onChange, error, periodTypes }) => (
   <>
     <Form.Control
       as="select"
@@ -22,11 +16,7 @@ const PeriodTypeSelect = ({
         Select period type
       </option>
       {periodTypes.map((type) => (
-        <option
-          key={type.value}
-          value={type.value}
-          disabled={restrictToChoiceForStudents && type.value !== "choicePFA"}
-        >
+        <option key={type.value} value={type.value}>
           {type.label}
         </option>
       ))}
@@ -45,7 +35,6 @@ PeriodTypeSelect.propTypes = {
       label: PropTypes.string.isRequired,
     })
   ).isRequired,
-  restrictToChoiceForStudents: PropTypes.bool, // Ajouté ici
 };
 
 export default PeriodTypeSelect;
