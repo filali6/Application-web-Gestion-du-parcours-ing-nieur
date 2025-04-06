@@ -7,13 +7,6 @@ import PeriodTypeSelect from "../../../components/Fields/PeriodTypeSelect";
 import FormButtons from "../../../components/Buttons/FormButtons";
 import { periodTypes, errorTypeMessages } from "./constants";
 
-const PeriodForm = ({
-  initialData,
-  onSubmit,
-  onCancel,
-  restrictToChoiceForStudents,
-}) => {
-
 const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -33,25 +26,18 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
       formData.EndDate &&
       formData.StartDate > formData.EndDate
     ) {
-      newErrors.EndDate = "End date must be after start date";
-
       newErrors.StartDate = "Start date must be before end date";
-
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleDateChange = (date, field) => {
-
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-
     setErrors((prev) => ({
       ...prev,
       StartDate: "", // Clear StartDate error on any date change
       EndDate: "", // Clear EndDate error on any date change
     }));
-
     setFormData({ ...formData, [field]: date });
   };
 
@@ -66,9 +52,7 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
     for (const [key, value] of Object.entries(errorTypeMessages)) {
       if (message.includes(key)) {
         message = value;
-
         // for the update alert
-
         if (key === "No changes detected") {
           Swal.fire({
             title: "No Changes",
@@ -132,7 +116,6 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
     }
   }, [initialData]);
 
-
   useEffect(() => {
     if (initialData) {
       setFormData({
@@ -170,9 +153,6 @@ const PeriodForm = ({ initialData, onSubmit, onCancel }) => {
                       onChange={handleTypeChange}
                       error={errors.type}
                       periodTypes={periodTypes}
-
-                      restrictToChoiceForStudents={restrictToChoiceForStudents}
-
                     />
                   </td>
                 </tr>
@@ -238,8 +218,6 @@ PeriodForm.propTypes = {
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-
-  restrictToChoiceForStudents: PropTypes.bool,
 };
 
 export default PeriodForm;
