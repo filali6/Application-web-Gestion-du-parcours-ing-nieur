@@ -103,7 +103,9 @@ export const getSubjects = async (req, res) => {
       .status(500)
       .json({ error: "An error occurred while fetching subjects." });
   }
+
 };
+
 
 //publish unpublish
 export const publishUnpublishAllSubjects = async (req, res) => {

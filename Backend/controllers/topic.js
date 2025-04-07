@@ -119,3 +119,36 @@ export const addTopic = async (req, res) => {
     });
   }
 };
+export const getTopics = async (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  try {
+    if (!token) {
+      return res.status(401).json({ error: "Token manquant ou expiré." });
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({ error: "Token invalide ou expiré." });
+    }
+
+    const studentId = decoded.userId;
+    if (!studentId) {
+      return res
+        .status(401)
+        .json({ error: "L'utilisateur doit être authentifié." });
+    }
+
+    // Récupérer les sujets de l'étudiant
+    const topics = await Sujet.find({ student: studentId });
+
+    res.status(200).json({ topics });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ error: "Erreur lors de la récupération des sujets." });
+  }
+};

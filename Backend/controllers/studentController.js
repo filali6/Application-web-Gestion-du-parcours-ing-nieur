@@ -9,7 +9,20 @@ import path from "path";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
 import { encryptPassword, decryptPassword } from "../encryption.js";
 import mongoose from "mongoose";
+export const getStudentsPFA = async (req, res) => {
+  try {
+    const Students = await Student.find({
+      level: 2,
+    }).select("-password -encryptedPassword");
 
+    res.status(200).json(Students);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des étudiants", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la récupération des étudiants.",
+    });
+  }
+};
 // Fonction pour générer un mot de passe aléatoire
 export const generatePassword = (length = 12) => {
   const charset =
@@ -58,6 +71,7 @@ export const addStudent = async (req, res) => {
 
     // Reste de la logique pour ajouter l'étudiant...
     const plainPassword = generatePassword();
+    console.log("Mot de passe généré (addStudent):", plainPassword); // Ajout du console.log ici
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
     const encryptedPlainPassword = encryptPassword(plainPassword);
 
@@ -450,6 +464,10 @@ export const importStudents = async (req, res) => {
 
         // Générer un mot de passe et le hacher
         const plainPassword = generatePassword();
+        console.log(
+          `Mot de passe généré pour ${mappedRow.email} (importStudents):`,
+          plainPassword
+        );
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
         const encryptedPlainPassword = encryptPassword(plainPassword);
 
