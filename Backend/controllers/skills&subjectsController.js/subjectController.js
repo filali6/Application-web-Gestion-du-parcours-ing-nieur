@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Subject from "../../models/Subject&Skill/Subject.js";
 import Teacher from "../../models/Teacher.js";
 import Student from "../../models/Student.js";
@@ -23,22 +24,32 @@ export const createSubject = async (req, res) => {
       year,
     } = req.body;
 
+    // Check if a subject with the same title already exists
+    const existingSubject = await Subject.findOne({ title });
+    if (existingSubject) {
+      return res.status(400).json({ message: "A subject with this title already exists." });
+    }
+
     // Validate assignedTeacher
     if (assignedTeacher) {
       const teacherExists = await Teacher.findById(assignedTeacher);
       if (!teacherExists) {
         return res
           .status(400)
-          .json({ message: "The assigned teachers does not exist." });
+          .json({ message: "The assigned teacher does not exist." });
       }
     }
 
-    if (assignedStudent) {
-      const studentExists = await Student.findById(assignedStudent);
-      if (!studentExists) {
+    // Validate assignedStudent (should be an array)
+    if (assignedStudent && assignedStudent.length > 0) {
+      const validStudents = await Student.find({
+        _id: { $in: assignedStudent }
+      });
+
+      if (validStudents.length !== assignedStudent.length) {
         return res
           .status(400)
-          .json({ message: "The assigned students does not exist." });
+          .json({ message: "One or more assigned students do not exist." });
       }
     }
 
@@ -47,8 +58,8 @@ export const createSubject = async (req, res) => {
       level,
       semester,
       curriculum,
-      assignedTeacher: assignedTeacher,
-      assignedStudent: assignedStudent,
+      assignedTeacher,
+      assignedStudent,
       year,
     });
 
@@ -58,31 +69,32 @@ export const createSubject = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 // get subjects
 export const getSubjects = async (req, res) => {
   try {
     const filter = req.yearFilter || {};
     const { role, userId } = req.auth;
 
-    let subjects;
+    let query = { ...filter };
 
     if (role === "admin") {
-      subjects = await Subject.find(filter).populate(
-        "assignedTeacher",
-        "firstName lastName email"
-      );
-    } else if (role === "student") {
-      subjects = await Subject.find({
-        isPublished: true,
-      });
+      // Admin sees everything, no extra filters
     } else if (role === "teacher") {
-      subjects = await Subject.find({
-        // assignedTeacher: userId,
-        isPublished: true,
-      });
+      // Teacher sees only published subjects assigned to them
+      query.assignedTeacher = userId;
+      query.isPublished = true;
+    } else if (role === "student") {
+      // Student sees only published subjects assigned to them
+      query.assignedStudent = userId;
+      query.isPublished = true;
     } else {
       return res.status(403).json({ error: "Access denied." });
     }
+
+    const subjects = await Subject.find(query)
+      .populate("assignedTeacher", "firstName lastName email")
+      .populate("assignedStudent", "firstName lastName email");
 
     res.status(200).json(subjects);
   } catch (error) {
@@ -587,3 +599,65 @@ export const updateSubject = async (req, res) => {
       .json({ error: "An error occurred while updating the subject." });
   }
 };
+
+// DELETE subject (with archive fallback if assigned to a teacher)
+export const deleteSubject = async (req, res) => {
+  const { id } = req.params;
+  const { archive } = req.body;
+
+  try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid subject ID." });
+    }
+
+    const subject = await Subject.findById(id);
+    if (!subject) return res.status(404).json({ error: "Subject not found" });
+
+    const isAssignedToTeacher = !!subject.assignedTeacher;
+
+    if (isAssignedToTeacher) {
+      if (archive === true) {
+        // Save a snapshot in the archive array
+        subject.archive.push({
+          year: subject.year,
+          assignedTeacher: subject.assignedTeacher,
+          assignedStudent: subject.assignedStudent,
+          curriculum: subject.curriculum
+        });
+
+        // Flag the subject as archived
+        subject.isArchived = true;
+
+        // DO NOT wipe the original fields — preserve them
+        await subject.save();
+        return res.status(200).json({ message: "Subject archived instead of deleted." });
+      } else {
+        return res.status(400).json({
+          message: "Cannot delete the subject because it is linked to a teacher.",
+        });
+      }
+    }
+
+    // If not assigned, delete normally
+    await Subject.findByIdAndDelete(id);
+    res.status(200).json({ message: "Subject deleted successfully." });
+
+  } catch (error) {
+    console.error("Error deleting subject:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const getArchivedSubjects = async (req, res) => {
+  try {
+    const subjects = await Subject.find({ isArchived: true })
+      .populate("assignedTeacher", "firstName lastName")
+      .populate("assignedStudent", "firstName lastName")
+      .lean();
+
+    res.status(200).json({ archivedSubjects: subjects });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch archived subjects." });
+  }
+};
+
