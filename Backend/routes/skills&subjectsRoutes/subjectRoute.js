@@ -20,6 +20,8 @@ import {
   addEvaluation,
   getEvaluations,
   validateProposition,
+  deleteSubject,
+  getArchivedSubjects,
 } from "../../controllers/skills&subjectsController.js/subjectController.js";
 import { validateSubject } from "../../joiValidations/SubjectValidation.js";
 import { yearFilter } from "../../middlewares/year.js";
@@ -34,6 +36,13 @@ router.get(
   isStudentOrAdminOrTeacher,
   yearFilter,
   getSubjects
+);
+router.get(
+  "/archived",
+  loggedMiddleware,
+  isAdmin,
+  yearFilter,
+  getArchivedSubjects 
 );
 router.post(
   "/publish/:response",
@@ -64,5 +73,7 @@ router.post(
   sendEvaluationEmailsToStudent
 );
 router.patch("/:id", loggedMiddleware, isAdmin, updateSubject);
+router.delete("/:id", loggedMiddleware, isAdmin, deleteSubject);
+
 
 export default router;

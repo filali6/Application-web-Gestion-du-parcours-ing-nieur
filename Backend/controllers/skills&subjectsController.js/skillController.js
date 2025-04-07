@@ -1,3 +1,4 @@
+// controllers/skills&subjectsController.js/skillController.js
 import mongoose from "mongoose";
 import Skill from "../../models/Subject&Skill/Skill.js";
 import Subject from "../../models/Subject&Skill/Subject.js";
@@ -6,39 +7,24 @@ import CV from "../../models/cv.js";
 
 ////////////////////////////////CREATE A SKILL///////////////////////////////////////
 export const createSkill = async (req, res) => {
-  // #swagger.tags = ['Skills']
   try {
     const { name, description, subjects, year } = req.body;
 
-    // Check if a skill with the same name already exists
     const existingSkill = await Skill.findOne({ name });
     if (existingSkill) {
-      return res.status(400).json({
-        message: "A skill with this name already exists.",
-      });
+      return res.status(400).json({ message: "A skill with this name already exists." });
     }
 
-    // Validate if all provided subject IDs exist
     if (subjects && subjects.length > 0) {
       const existingSubjects = await Subject.find({ _id: { $in: subjects } });
       if (existingSubjects.length !== subjects.length) {
-        return res.status(400).json({
-          message: "One or more provided subjects do not exist.",
-        });
+        return res.status(400).json({ message: "One or more provided subjects do not exist." });
       }
     }
 
-    // Create the skill
-    const newSkill = new Skill({
-      name,
-      description,
-      subjects,
-      year,
-    });
-
+    const newSkill = new Skill({ name, description, subjects, year });
     await newSkill.save();
 
-    // Mettre à jour les CV après la création de la compétence
     await updateStudentCvsWithSkill(newSkill._id, subjects);
 
     res.status(201).json({ message: "Skill added successfully." });
@@ -49,14 +35,11 @@ export const createSkill = async (req, res) => {
 
 /////////////////////////////////GET ALL SKILLS/////////////////////////////////
 export const getSkills = async (req, res) => {
-  // #swagger.tags = ['Skills']
   try {
     const filter = req.yearFilter || {};
-    const skills = await Skill.find(filter).populate("subjects", "title level");
+    filter.isArchived = false; // ✅ Exclude archived skills
 
-    if (skills.length === 0) {
-      return res.status(404).json({ message: "No skills found." });
-    }
+    const skills = await Skill.find(filter).populate("subjects", "title level");
 
     const formattedSkills = skills.map((skill) => ({
       id: skill._id,
@@ -75,17 +58,14 @@ export const getSkills = async (req, res) => {
   }
 };
 
+
 //////////////////////////////GET SKILL BY ID/////////////////////////////////////////
 export const getSkillByID = async (req, res) => {
-  // #swagger.tags = ['Skills']
   const { id } = req.params;
 
   try {
     const filter = req.yearFilter || {};
-    const skill = await Skill.findById({ _id: id, ...filter }).populate(
-      "subjects",
-      "title level"
-    );
+    const skill = await Skill.findById({ _id: id, ...filter }).populate("subjects", "title level");
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid skill ID." });
@@ -112,39 +92,25 @@ export const getSkillByID = async (req, res) => {
   }
 };
 
-// //////////////////////////////////UPDATE A SKILL//////////////////////////////////
-
+////////////////////////////////UPDATE A SKILL//////////////////////////////////
 export const updateSkill = async (req, res) => {
   const { id } = req.params;
-  const { name, description, force, subjects } = req.body;
+  const { name, description, force, subjects, isArchived } = req.body;
 
   try {
-    // Validate skill ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid skill ID." });
     }
 
-    // Find the skill and populate only the 'title' field of associated subjects
-    const skill = await Skill.findById(id).populate({
-      path: "subjects",
-      select: "title", // Include only the 'title' field
-    });
+    const skill = await Skill.findById(id).populate({ path: "subjects", select: "title" });
+    if (!skill) return res.status(404).json({ message: "Skill not found." });
 
-    if (!skill) {
-      return res.status(404).json({ message: "Skill not found." });
-    }
-
-    // Check if the skill is associated with subjects
-    if (!force && skill.subjects && skill.subjects.length > 0) {
-      return res.status(400).json({
-        message:
-          "This skill is associated with subjects and cannot be modified unless force = true.",
-      });
+    if (!force && skill.subjects.length > 0) {
+      return res.status(400).json({ message: "This skill is associated with subjects and cannot be modified unless force = true." });
     }
 
     let changesMade = false;
 
-    // Update the skill fields if new values are provided and different
     if (name !== undefined && name !== skill.name) {
       skill.name = name;
       changesMade = true;
@@ -154,39 +120,30 @@ export const updateSkill = async (req, res) => {
       changesMade = true;
     }
 
+    if (typeof isArchived === 'boolean') {
+      skill.isArchived = isArchived;
+      changesMade = true;
+    }
+
     if (subjects !== undefined) {
-      // Validate provided subjects
       const validSubjects = await Subject.find({ _id: { $in: subjects } });
       if (validSubjects.length !== subjects.length) {
-        return res.status(400).json({
-          message: "One or more provided subjects do not exist.",
-        });
+        return res.status(400).json({ message: "One or more provided subjects do not exist." });
       }
 
-      // Track old and new subjects
       const oldSubjects = skill.subjects.map((s) => s._id.toString());
       const newSubjects = subjects;
 
-      skill.subjects = newSubjects; // Update subjects
+      skill.subjects = newSubjects;
       changesMade = true;
 
-      // Identify added and removed subjects
-      const addedSubjects = newSubjects.filter(
-        (subject) => !oldSubjects.includes(subject.toString())
-      );
-      const removedSubjects = oldSubjects.filter(
-        (subject) => !newSubjects.includes(subject.toString())
-      );
+      const addedSubjects = newSubjects.filter(sub => !oldSubjects.includes(sub.toString()));
+      const removedSubjects = oldSubjects.filter(sub => !newSubjects.includes(sub.toString()));
 
-      // Update CVs for added subjects
       for (const subjectId of addedSubjects) {
-        const subject = await Subject.findById(subjectId).populate(
-          "assignedStudent"
-        );
+        const subject = await Subject.findById(subjectId).populate("assignedStudent");
         if (subject.assignedStudent) {
-          const studentCv = await CV.findOne({
-            student: subject.assignedStudent,
-          });
+          const studentCv = await CV.findOne({ student: subject.assignedStudent });
           if (studentCv && !studentCv.skills.includes(skill._id)) {
             studentCv.skills.push(skill._id);
             await studentCv.save();
@@ -194,19 +151,14 @@ export const updateSkill = async (req, res) => {
         }
       }
 
-      // Update CVs for removed subjects
       for (const subjectId of removedSubjects) {
-        const subject = await Subject.findById(subjectId).populate(
-          "assignedStudent"
-        );
+        const subject = await Subject.findById(subjectId).populate("assignedStudent");
         if (subject.assignedStudent) {
-          const studentCv = await CV.findOne({
-            student: subject.assignedStudent,
-          });
+          const studentCv = await CV.findOne({ student: subject.assignedStudent });
           if (studentCv) {
-            const skillIndex = studentCv.skills.indexOf(skill._id);
-            if (skillIndex > -1) {
-              studentCv.skills.splice(skillIndex, 1); // Remove skill
+            const index = studentCv.skills.indexOf(skill._id);
+            if (index > -1) {
+              studentCv.skills.splice(index, 1);
               await studentCv.save();
             }
           }
@@ -215,74 +167,48 @@ export const updateSkill = async (req, res) => {
     }
 
     if (!changesMade) {
-      const unchangedSkill = await Skill.findById(id).populate({
-        path: "subjects",
-        select: "title",
-      });
-      return res.status(200).json({
-        message: "No changes made.",
-        skill: unchangedSkill,
-      });
+      const unchangedSkill = await Skill.findById(id).populate("subjects", "title");
+      return res.status(200).json({ message: "No changes made.", skill: unchangedSkill });
     }
 
     await skill.save();
+    const updatedSkill = await Skill.findById(id).populate("subjects", "title");
 
-    const updatedSkill = await Skill.findById(id).populate({
-      path: "subjects",
-      select: "title",
-    });
-
-    res.status(200).json({
-      message: "Skill updated successfully.",
-      skill: updatedSkill,
-    });
+    res.status(200).json({ message: "Skill updated successfully.", skill: updatedSkill });
   } catch (error) {
-    console.error("Error updating skill:", error);
     res.status(500).json({ error: error.message });
   }
 };
 
 /////////////////////////////////////DELETE A SKILL////////////////////////////////
 export const deleteSkill = async (req, res) => {
-  // #swagger.tags = ['Skills']
   const { id } = req.params;
   const { archive } = req.body;
 
   try {
-    const skill = await Skill.findById(id);
-
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: "Invalid skill ID." });
     }
 
+    const skill = await Skill.findById(id);
     if (!skill) return res.status(404).json({ error: "Skill not found" });
 
     if (archive !== true && archive !== false) {
-      return res
-        .status(400)
-        .json({ message: "Archive must be true or false." });
+      return res.status(400).json({ message: "Archive must be true or false." });
     }
 
     const isAssigned = skill.subjects.length > 0;
 
     if (isAssigned) {
       if (archive === true) {
-        // Check if 'archive' is true in the body
-        // Archive the skill instead of deleting by updating isArchived field
         skill.isArchived = true;
         await skill.save();
-        return res.status(200).json({
-          message:
-            "Skill archived successfully because it is linked to subjects.",
-        });
+        return res.status(200).json({ message: "Skill archived successfully because it is linked to subjects." });
       } else {
-        return res.status(400).json({
-          message: "Cannot delete the skill because it is linked to subjects.",
-        });
+        return res.status(400).json({ message: "Cannot delete the skill because it is linked to subjects." });
       }
     }
 
-    // If not linked to any subjects, delete the skill
     await Skill.findByIdAndDelete(id);
     res.status(200).json({ message: "Skill deleted successfully." });
   } catch (error) {
@@ -292,15 +218,23 @@ export const deleteSkill = async (req, res) => {
 
 //////////////////////////////GET ARCHIVED SKILLS/////////////////////////////
 export const getArchivedSkills = async (req, res) => {
-  // #swagger.tags = ['Skills']
   try {
-    const archivedSkills = await Skill.find({ isArchived: true });
+    const skills = await Skill.find({ isArchived: true }).populate("subjects", "title level");
 
-    if (archivedSkills.length === 0) {
-      return res.status(404).json({ message: "No archived skills found." });
-    }
-    res.status(200).json({ archivedSkills });
+    const formattedSkills = skills.map((skill) => ({
+      id: skill._id,
+      name: skill.name,
+      description: skill.description,
+      subjects: skill.subjects.map((subject) => ({
+        id: subject._id,
+        title: subject.title,
+        level: subject.level,
+      })),
+    }));
+
+    res.status(200).json({ archivedSkills: formattedSkills });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: 'Failed to get archived skills', error: error.message });
   }
 };
+

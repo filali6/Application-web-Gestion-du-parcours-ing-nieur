@@ -25,6 +25,7 @@ const subjectSchema = mongoose.Schema({
       default: null,
     },
   ],
+  isArchived: { type: Boolean, default: false },
   isPublished: { type: Boolean, default: false },
 
   evaluations: [

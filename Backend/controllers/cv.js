@@ -69,13 +69,13 @@ export const updateStudentCvsWithSkill = async (skillId, subjects) => {
       "assignedStudent"
     );
 
-    console.log("Students found for subjects:", students);
+    // console.log("Students found for subjects:", students);
 
     for (const studentId of students) {
       // Vérifier si l'ID de l'étudiant existe dans la collection Students
       const studentExists = await Student.exists({ _id: studentId });
       if (!studentExists) {
-        console.log(`Student with ID ${studentId} does not exist. Skipping.`);
+        // console.log(`Student with ID ${studentId} does not exist. Skipping.`);
         continue; // Passer à l'étudiant suivant si l'ID est invalide
       }
 
@@ -88,7 +88,7 @@ export const updateStudentCvsWithSkill = async (skillId, subjects) => {
         .populate("languages", "name -_id");
 
       if (!studentCv) {
-        console.log(`Creating new CV for student ${studentId}`);
+        console.log(`V for student ${studentId}`);
         studentCv = new CV({ student: studentId, skills: [] });
       }
 
@@ -96,12 +96,12 @@ export const updateStudentCvsWithSkill = async (skillId, subjects) => {
       if (!studentCv.skills.some((skill) => skill._id.toString() === skillId)) {
         studentCv.skills.push(skillId);
         await studentCv.save();
-        console.log(`Added skill ${skillId} to CV of student ${studentId}`);
+        // console.log(`Added skill ${skillId} to CV of student ${studentId}`);
       }
 
       // Mettre à jour le CV avec les données actuelles (si nécessaire)
       await studentCv.save();
-      console.log(`Updated CV for student ${studentId}`);
+      // console.log(`student ${studentId}`);
     }
   } catch (error) {
     console.error("Error updating student CVs:", error);
