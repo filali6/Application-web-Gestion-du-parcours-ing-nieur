@@ -3,7 +3,7 @@ import { Row, Col, Alert, Button } from 'react-bootstrap';
 import * as Yup from 'yup';
 import { Formik } from 'formik';
 import { useNavigate } from 'react-router-dom';
-import { loginUnified } from '../../../services/auth';
+import { loginUnified } from '../../../services/auth.service';
 import { useAuth } from '../../../contexts/AuthContext';
 
 const JWTLogin = () => {

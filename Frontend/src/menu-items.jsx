@@ -100,7 +100,7 @@ const getMenuItems = () => {
   const studentPages = [
     {
       id: 'student-skills',
-      title: 'My Skills & Competences',
+      title: 'My Skills & Subjects',
       type: 'item',
       icon: 'feather icon-award',
       url: '/skills-subjects/my-skills-subjects'
