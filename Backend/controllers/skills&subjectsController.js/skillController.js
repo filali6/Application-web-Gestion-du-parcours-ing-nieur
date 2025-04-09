@@ -238,3 +238,22 @@ export const getArchivedSkills = async (req, res) => {
   }
 };
 
+export const restoreSkill = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const skill = await Skill.findById(id);
+    if (!skill || !skill.isArchived) {
+      return res.status(404).json({ error: "Archived skill not found." });
+    }
+
+    skill.isArchived = false;
+
+    await skill.save();
+
+    res.status(200).json({ message: "Skill restored successfully." });
+  } catch (error) {
+    console.error("Error restoring skill:", error);
+    res.status(500).json({ error: "An error occurred while restoring the skill." });
+  }
+};
