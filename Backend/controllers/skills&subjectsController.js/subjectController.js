@@ -27,7 +27,9 @@ export const createSubject = async (req, res) => {
     // Check if a subject with the same title already exists
     const existingSubject = await Subject.findOne({ title });
     if (existingSubject) {
-      return res.status(400).json({ message: "A subject with this title already exists." });
+      return res
+        .status(400)
+        .json({ message: "A subject with this title already exists." });
     }
 
     // Validate assignedTeacher
@@ -43,7 +45,7 @@ export const createSubject = async (req, res) => {
     // Validate assignedStudent (should be an array)
     if (assignedStudent && assignedStudent.length > 0) {
       const validStudents = await Student.find({
-        _id: { $in: assignedStudent }
+        _id: { $in: assignedStudent },
       });
 
       if (validStudents.length !== assignedStudent.length) {
@@ -103,9 +105,7 @@ export const getSubjects = async (req, res) => {
       .status(500)
       .json({ error: "An error occurred while fetching subjects." });
   }
-
 };
-
 
 //publish unpublish
 export const publishUnpublishAllSubjects = async (req, res) => {
@@ -114,7 +114,7 @@ export const publishUnpublishAllSubjects = async (req, res) => {
     const publish = response === "publish";
 
     const updatedSubjects = await Subject.updateMany(
-      {},
+      { isArchived: false },
       { isPublished: publish }
     );
 
@@ -624,18 +624,22 @@ export const deleteSubject = async (req, res) => {
           year: subject.year,
           assignedTeacher: subject.assignedTeacher,
           assignedStudent: subject.assignedStudent,
-          curriculum: subject.curriculum
+          curriculum: subject.curriculum,
         });
 
-        // Flag the subject as archived
+        // Flag the subject as archived && unpublished
         subject.isArchived = true;
+        subject.isPublished = false;
 
         // DO NOT wipe the original fields — preserve them
         await subject.save();
-        return res.status(200).json({ message: "Subject archived instead of deleted." });
+        return res
+          .status(200)
+          .json({ message: "Subject archived instead of deleted." });
       } else {
         return res.status(400).json({
-          message: "Cannot delete the subject because it is linked to a teacher.",
+          message:
+            "Cannot delete the subject because it is linked to a teacher.",
         });
       }
     }
@@ -643,7 +647,6 @@ export const deleteSubject = async (req, res) => {
     // If not assigned, delete normally
     await Subject.findByIdAndDelete(id);
     res.status(200).json({ message: "Subject deleted successfully." });
-
   } catch (error) {
     console.error("Error deleting subject:", error);
     res.status(500).json({ error: error.message });
@@ -663,3 +666,29 @@ export const getArchivedSubjects = async (req, res) => {
   }
 };
 
+// Restore Subject (updated to accept publish param from frontend)
+export const restoreSubject = async (req, res) => {
+  const { id } = req.params;
+  const { publish } = req.body; // boolean to set isPublished
+
+  try {
+    const subject = await Subject.findById(id);
+    if (!subject) {
+      return res.status(404).json({ message: "Subject not found." });
+    }
+
+    if (!subject.isArchived) {
+      return res.status(400).json({ message: "Subject is not archived." });
+    }
+
+    subject.isArchived = false;
+    subject.isPublished = publish ?? false; // default to false if publish is undefined
+
+    await subject.save();
+
+    res.status(200).json({ message: "Subject restored successfully." });
+  } catch (error) {
+    console.error("Restore error:", error);
+    res.status(500).json({ message: "Failed to restore subject." });
+  }
+};

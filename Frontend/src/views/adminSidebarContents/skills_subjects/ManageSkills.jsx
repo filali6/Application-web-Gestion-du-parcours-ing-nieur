@@ -3,7 +3,8 @@ import { Button, Form, Modal, Spinner, Table } from 'react-bootstrap';
 import Swal from 'sweetalert2';
 import Select from 'react-select';
 
-import { getSkills, getArchivedSkills, createSkill, updateSkill, deleteSkill } from '../../../services/skills.service';
+import { getSkills, getArchivedSkills, createSkill, updateSkill, deleteSkill, restoreSkill } from '../../../services/skills.service';
+
 import { getSubjects } from '../../../services/subjects.service';
 
 const ITEMS_PER_PAGE = 5;
@@ -29,7 +30,7 @@ const ManageSkills = () => {
       setSkills(active || []);
       setArchivedSkills(archived.archivedSkills || []);
     } catch (err) {
-      // Optional error handling
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -78,7 +79,16 @@ const ManageSkills = () => {
       setShowModal(false);
       Swal.fire('Success', `Skill ${editingSkill ? 'updated' : 'created'} successfully.`, 'success');
     } catch (err) {
-      Swal.fire('Error', err.response?.data?.message || 'Skill operation failed.', 'error');
+      const message = err.response?.data?.message || 'Skill operation failed.';
+      if (message.includes('already exists')) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Duplicate Skill',
+          text: 'Skill already exists. You can restore it from archived skills.'
+        });
+      } else {
+        Swal.fire('Error', message, 'error');
+      }
     }
   };
 
@@ -137,6 +147,16 @@ const ManageSkills = () => {
           Swal.fire('Error', msg, 'error');
         }
       }
+    }
+  };
+
+  const handleRestore = async (id) => {
+    try {
+      await restoreSkill(id);
+      await fetchSkills();
+      Swal.fire('Restored!', 'Skill has been restored.', 'success');
+    } catch (err) {
+      Swal.fire('Error', err.response?.data?.message || 'Restore failed.', 'error');
     }
   };
 
@@ -253,7 +273,7 @@ const ManageSkills = () => {
                   <th>Skill Name</th>
                   <th>Description</th>
                   <th>Subjects</th>
-                  {tab === 'active' && <th>Actions</th>}
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -261,24 +281,39 @@ const ManageSkills = () => {
                   <tr key={skill.id}>
                     <td>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
                     <td>{skill.name}</td>
-                    <td>{skill.description || '-'}</td>
+                    <td
+                      style={{
+                        maxWidth: '300px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}
+                      title={skill.description}
+                    >
+                      {skill.description || '-'}
+                    </td>
                     <td>{skill.subjects.map((s) => s.title).join(', ') || '-'}</td>
-                    {tab === 'active' && (
-                      <td>
-                        <Button variant="warning" size="sm" className="me-2" onClick={() => handleEdit(skill)}>
-                          Edit
+                    <td>
+                      {tab === 'active' ? (
+                        <>
+                          <Button variant="warning" size="sm" className="me-2" onClick={() => handleEdit(skill)}>
+                            Edit
+                          </Button>
+                          <Button variant="danger" size="sm" onClick={() => handleDelete(skill.id)}>
+                            Delete
+                          </Button>
+                        </>
+                      ) : (
+                        <Button variant="success" size="sm" onClick={() => handleRestore(skill.id)}>
+                          Restore
                         </Button>
-                        <Button variant="danger" size="sm" onClick={() => handleDelete(skill.id)}>
-                          Delete
-                        </Button>
-                      </td>
-                    )}
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </Table>
           </div>
-
           {pageCount > 1 && renderPagination()}
         </>
       )}
@@ -312,7 +347,7 @@ const ManageSkills = () => {
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button variant="primary" type="submit" disabled={!form.name.trim() || !form.description.trim()}>
               {editingSkill ? 'Update' : 'Create'}
             </Button>
           </Modal.Footer>

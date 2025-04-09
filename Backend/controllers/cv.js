@@ -104,7 +104,7 @@ export const updateStudentCvsWithSkill = async (skillId, subjects) => {
       // console.log(`student ${studentId}`);
     }
   } catch (error) {
-    console.error("Error updating student CVs:", error);
+    // console.error("Error updating student CVs:", error);
   }
 };
 

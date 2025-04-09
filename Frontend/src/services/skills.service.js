@@ -54,3 +54,8 @@ export const getArchivedSkills = async () => {
   const res = await axios.get(`${API_BASE}/skills/archive`, getAuthHeader());
   return res.data;
 };
+
+export const restoreSkill = async (id) => {
+  const res = await axios.post(`${API_BASE}/skills/restore/${id}`, {}, getAuthHeader());
+  return res.data;
+};

@@ -11,9 +11,9 @@ import {
   updateSubject,
   getArchivedSubjects,
   publishUnpublishSubjects,
-  // restoreSubject,
   getTeachers,
   getStudents,
+  restoreSubject,
 } from "../../../services/subjects.service";
 
 const ITEMS_PER_PAGE = 5;
@@ -107,13 +107,14 @@ const ManageSubjects = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const payload = {
-        ...form,
-        assignedTeacher: form.assignedTeacher?.value || null,
-        assignedStudent: form.assignedStudent.map((s) => s.value),
-      };
 
+    const payload = {
+      ...form,
+      assignedTeacher: form.assignedTeacher?.value || null,
+      assignedStudent: form.assignedStudent.map((s) => s.value),
+    };
+
+    try {
       if (editingSubject) {
         await updateSubject(editingSubject._id, payload);
       } else {
@@ -124,17 +125,25 @@ const ManageSubjects = () => {
       setEditingSubject(null);
       resetForm();
       fetchData();
+
       Swal.fire(
         "Success",
         `Subject ${editingSubject ? "updated" : "created"} successfully.`,
         "success"
       );
     } catch (err) {
-      Swal.fire(
-        "Error",
-        err.response?.data?.message || "Operation failed.",
-        "error"
-      );
+      const errorMessage = err.response?.data?.message || "Operation failed.";
+
+      // Custom error for duplicate title
+      if (errorMessage.includes("already exists")) {
+        Swal.fire({
+          icon: "warning",
+          title: "Duplicate Subject",
+          text: "Subject already exists. You can restore it from archived subjects.",
+        });
+      } else {
+        Swal.fire("Error", errorMessage, "error");
+      }
     }
   };
 
@@ -265,15 +274,20 @@ const ManageSubjects = () => {
   //   }
   // };
 
-  // const handleRestore = async (id) => {
-  //   try {
-  //     await restoreSubject(id);
-  //     fetchData();
-  //     Swal.fire('Restored!', 'Subject has been restored.', 'success');
-  //   } catch (err) {
-  //     Swal.fire('Error', err.response?.data?.message || 'Restore failed.', 'error');
-  //   }
-  // };
+  const handleRestore = async (id) => {
+    try {
+      const shouldPublish = !subjects
+        .filter((s) => !s.isArchived)
+        .some((s) => !s.isPublished); // matches global publish state
+  
+      await restoreSubject(id, shouldPublish);
+      fetchData();
+      Swal.fire("Restored!", "Subject has been restored.", "success");
+    } catch (err) {
+      Swal.fire("Error", err.response?.data?.message || "Restore failed.", "error");
+    }
+  };
+  
 
   const filtered = (
     tab === "active"
@@ -392,11 +406,18 @@ const ManageSubjects = () => {
                 variant={
                   subjects.some((s) => !s.isPublished) ? "secondary" : "dark"
                 }
+                disabled={subjects.filter((s) => !s.isArchived).length === 0}
                 onClick={() =>
-                  handleTogglePublish(subjects.some((s) => !s.isPublished))
+                  handleTogglePublish(
+                    subjects
+                      .filter((s) => !s.isArchived)
+                      .some((s) => !s.isPublished)
+                  )
                 }
               >
-                {subjects.some((s) => !s.isPublished)
+                {subjects
+                  .filter((s) => !s.isArchived)
+                  .some((s) => !s.isPublished)
                   ? "📢 Publish All"
                   : "🙈 Unpublish All"}
               </Button>
@@ -747,7 +768,19 @@ const ManageSubjects = () => {
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit">
+            <Button
+              variant="primary"
+              type="submit"
+              disabled={
+                !form.title.trim() ||
+                !form.level.trim() ||
+                !form.semester.trim() ||
+                form.curriculum.chapters.length < 1 ||
+                !form.curriculum.chapters[0].title.trim() ||
+                form.curriculum.chapters[0].sections.length < 1 ||
+                !form.curriculum.chapters[0].sections[0].trim()
+              }
+            >
               {editingSubject ? "Update" : "Create"}
             </Button>
           </Modal.Footer>

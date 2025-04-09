@@ -22,6 +22,7 @@ import {
   validateProposition,
   deleteSubject,
   getArchivedSubjects,
+  restoreSubject,
 } from "../../controllers/skills&subjectsController.js/subjectController.js";
 import { validateSubject } from "../../joiValidations/SubjectValidation.js";
 import { yearFilter } from "../../middlewares/year.js";
@@ -57,6 +58,7 @@ router.post(
   updateSubjectProgress
 );
 router.post("/:id/evaluation", loggedMiddleware, isStudent, addEvaluation);
+
 router.get(
   "/:id/evaluation",
   loggedMiddleware,
@@ -74,6 +76,9 @@ router.post(
 );
 router.patch("/:id", loggedMiddleware, isAdmin, updateSubject);
 router.delete("/:id", loggedMiddleware, isAdmin, deleteSubject);
+router.patch("/:id/restore", loggedMiddleware, isAdmin, restoreSubject);
+
+
 
 
 export default router;

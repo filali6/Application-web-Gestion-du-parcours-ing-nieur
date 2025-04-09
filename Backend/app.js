@@ -25,6 +25,7 @@ import saisonRoutes from "./routes/saison.js";
 import startCronJob from "./notifyWithMail/cvUpdate.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import dashboardRoutes from './routes/dashboardRoute.js';
 
 // Obtenez le nom de fichier actuel avec import.meta.url
 const __filename = fileURLToPath(import.meta.url);
@@ -64,6 +65,8 @@ app.use("/internship/planning", assignRoute);
 app.use("/period", routerPeriod);
 app.use("/", cvRoutes);
 app.use("/years", saisonRoutes);
+app.use('/dashboard', dashboardRoutes);
+
 
 //Notifications sent to mail using node cron//
 // scheduleCronJobs();

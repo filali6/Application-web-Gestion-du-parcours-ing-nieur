@@ -98,3 +98,12 @@ export const getTeachers = async () => {
   const res = await axios.get(`${API_BASE}/teachers`, getAuthHeader());
   return res.data;
 };
+
+export const restoreSubject = async (id, publish) => {
+  const res = await axios.patch(
+    `${API_BASE}/subjects/${id}/restore`,
+    { publish },
+    getAuthHeader()
+  );
+  return res.data;
+};

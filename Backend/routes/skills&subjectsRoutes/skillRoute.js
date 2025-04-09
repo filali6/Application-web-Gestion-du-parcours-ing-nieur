@@ -5,6 +5,7 @@ import {
   getArchivedSkills,
   getSkillByID,
   getSkills,
+  restoreSkill,
   updateSkill,
 } from "../../controllers/skills&subjectsController.js/skillController.js";
 
@@ -25,5 +26,6 @@ router.get("/", loggedMiddleware, isAdminOrTeacher, yearFilter, getSkills);
 router.get("/:id", loggedMiddleware, isAdmin, yearFilter, getSkillByID);
 router.patch("/:id", loggedMiddleware, isAdmin, validateSkill, updateSkill);
 router.delete("/:id", loggedMiddleware, isAdmin, deleteSkill);
+router.post("/restore/:id", loggedMiddleware,isAdmin, restoreSkill);
 
 export default router;
