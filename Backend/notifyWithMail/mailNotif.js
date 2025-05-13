@@ -12,7 +12,7 @@ export const sendNotification = async ({
       port: "587",
       auth: {
         user: "azizhasnaoui000@gmail.com",
-        pass: "sexgkvgjqzzacnbl",
+        pass: "khnzituyzcsqwclz",
       }
       ,
       tls: {
