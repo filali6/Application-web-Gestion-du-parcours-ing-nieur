@@ -2,7 +2,8 @@ import axios from "axios";
 
 const API_URL = "http://localhost:5000/students";
 
-export const getStudents = async (yearFilter = "", token) => {
+export const getStudents = async (yearFilter = "") => {
+  const token = localStorage.getItem("token"); // <- ici directement
   try {
     const response = await axios.get(API_URL, {
       headers: {

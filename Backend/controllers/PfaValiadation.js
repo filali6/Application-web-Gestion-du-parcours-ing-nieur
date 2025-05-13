@@ -5,6 +5,8 @@ import Teacher from "../models/Teacher.js";
 import { sendNotification } from "../notifyWithMail/mailNotif.js";
 import { generateEmailTemplate } from "../notifyWithMail/notifTemplate.js";
 
+//7.5
+
 export const sendPFAValidation = async (req, res) => {
   const { Link, emailType } = req.body;
 
@@ -94,6 +96,8 @@ export const sendPFAValidation = async (req, res) => {
   }
 };
 
+//7.1
+
 export const listChoicesByStudent = async (req, res) => {
   try {
     // Requête pour récupérer tous les PFAs avec les choix des étudiants
@@ -165,6 +169,8 @@ export const listChoicesByStudent = async (req, res) => {
     res.status(500).json({ error: "Internal server error." });
   }
 };
+
+//7.2
 
 export const autoAssignPFAS = async (req, res) => {
   try {
@@ -350,6 +356,7 @@ export const autoAssignPFAS = async (req, res) => {
   }
 };
 
+//7.4
 export const publishOrUnpublishAllPFAs = async (req, res) => {
   try {
     const { response } = req.params; // Prendre la valeur depuis l'URL
@@ -392,101 +399,110 @@ export const publishOrUnpublishAllPFAs = async (req, res) => {
   }
 };
 
+//7.3
+
 export const assignManuallyPfa = async (req, res) => {
-    try {
-      const { id: pfaId, studentId } = req.params;
-      const { force } = req.body; // Force option to reassign even if the student already has an assigned PFA
-  
-      // Vérification des paramètres requis
-      if (!pfaId || !studentId) {
-        return res
-          .status(400)
-          .json({ error: "PFA ID and Student ID are required." });
-      }
-  
-      // Vérification si l'étudiant existe
-      const student = await Student.findById(studentId);
-      if (!student) {
-        return res.status(404).json({ error: "Student not found." });
-      }
-  
-      // Vérification si le PFA existe
-      const pfa = await PFA.findById(pfaId);
-      if (!pfa) {
-        return res.status(404).json({ error: "PFA not found." });
-      }
-  
-      // Vérifier si l'étudiant a déjà un PFA affecté
-      const studentChoice = pfa.choices.find(
-        (choice) => choice.student.toString() === studentId && choice.validation === true
-      );
-  
-      // Si force est false et que l'étudiant a déjà un PFA affecté, retourner une erreur
-      if (!force && studentChoice) {
-        return res
-          .status(400)
-          .json({ error: "Student is already assigned to this PFA." });
-      }
-  
-      // Si force est true, on doit retirer l'étudiant de l'ancien PFA
-      if (force && studentChoice) {
-        const oldPfa = await PFA.findOne({
-          "choices.student": studentId,
-          "choices.validation": true,
-        });
-  
-        if (oldPfa) {
-          console.log("Old PFA found:", oldPfa.title || oldPfa._id);
-  
-          // Retirer l'étudiant de la liste des choix
-          oldPfa.choices = oldPfa.choices.filter(
-            (choice) => choice.student.toString() !== studentId
-          );
-  
-          // Retirer l'étudiant de la liste des étudiants assignés (Students[])
-          oldPfa.Students = oldPfa.Students.filter(
-            (student) => student.toString() !== studentId
-          );
-  
-          // Sauvegarder les modifications
-          await oldPfa.save();
-        } else {
-          console.warn(`No old PFA found for studentId ${studentId}`);
-        }
-      }
-  
-      // Ajouter ou mettre à jour le choix dans le PFA actuel
-      const existingChoice = pfa.choices.find(
-        (choice) => choice.student.toString() === studentId
-      );
-      if (existingChoice) {
-        existingChoice.validation = true;
-        existingChoice.acceptedByTeacher = true;
-      } else {
-        pfa.choices.push({
-          student: studentId,
-          priority: 1, // Priorité par défaut
-          acceptedByTeacher: true, // L'enseignant accepte le choix
-          validation: true, // Validation de l'affectation
-        });
-      }
-  
-      // Ajouter l'étudiant à la liste des étudiants assignés dans Students[]
-      pfa.Students.push(studentId);
-  
-      // Sauvegarder le PFA mis à jour
-      await pfa.save();
-  
-      res.status(200).json({
-        message: `Student successfully assigned to PFA with force=${force}.`,
-        student: { firstName: student.firstName, lastName: student.lastName },
-        pfa: pfa.title,
+  try {
+    const { id: pfaId, studentId } = req.params;
+    const { force } = req.body;
+
+    if (!pfaId || !studentId) {
+      return res.status(400).json({
+        error: "PFA ID et Student ID sont requis.",
       });
-    } catch (error) {
-      console.error("Error during PFA assignment:", error);
-      res.status(500).json({ error: "Internal server error." });
     }
-  };
-  
-  
-  
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: "Étudiant non trouvé." });
+    }
+
+    const pfa = await PFA.findById(pfaId);
+    if (!pfa) {
+      return res.status(404).json({ error: "PFA non trouvé." });
+    }
+
+    const hasExistingValidation = pfa.choices.some(
+      (choice) => choice.validation === true
+    );
+
+    if (!force && hasExistingValidation) {
+      return res.status(400).json({
+        error:
+          "Ce sujet est déjà attribué à un étudiant. Utilisez force=true pour réattribuer.",
+      });
+    }
+
+    if (force && hasExistingValidation) {
+      pfa.choices = pfa.choices.map((choice) => {
+        if (choice.validation === true) {
+          choice.validation = false;
+        }
+        return choice;
+      });
+      pfa.Students = [];
+    }
+
+    const studentChoice = pfa.choices.find(
+      (choice) =>
+        choice.student.toString() === studentId && choice.validation === true
+    );
+
+    if (!force && studentChoice) {
+      return res.status(400).json({
+        error: "L'étudiant est déjà assigné à ce PFA.",
+      });
+    }
+
+    if (force) {
+      const oldPfa = await PFA.findOne({
+        "choices.student": studentId,
+        "choices.validation": true,
+      });
+
+      if (oldPfa) {
+        oldPfa.choices = oldPfa.choices.filter(
+          (choice) => choice.student.toString() !== studentId
+        );
+        oldPfa.Students = oldPfa.Students.filter(
+          (s) => s.toString() !== studentId
+        );
+        await oldPfa.save();
+      }
+    }
+
+    const existingChoice = pfa.choices.find(
+      (choice) => choice.student.toString() === studentId
+    );
+
+    if (existingChoice) {
+      existingChoice.validation = true;
+      existingChoice.acceptedByTeacher = true;
+    } else {
+      pfa.choices.push({
+        student: studentId,
+        priority: 1,
+        acceptedByTeacher: true,
+        validation: true,
+      });
+    }
+
+    if (!pfa.Students.includes(studentId)) {
+      pfa.Students.push(studentId);
+    }
+
+    await pfa.save();
+
+    res.status(200).json({
+      message: `Affectation ${force ? "forcée" : "standard"} réussie.`,
+      student: {
+        firstName: student.firstName,
+        lastName: student.lastName,
+      },
+      pfa: pfa.title,
+    });
+  } catch (error) {
+    console.error("Erreur lors de l'affectation manuelle :", error);
+    res.status(500).json({ error: "Erreur serveur." });
+  }
+};

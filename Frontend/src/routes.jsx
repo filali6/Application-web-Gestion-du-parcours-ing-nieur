@@ -102,6 +102,26 @@ const routes = [
         ),
       },
       {
+        path: "/pfa/validate-pfa",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/ValidatePFA")
+        ),
+      },
+      {
+        path: "/pfa/auto-assign",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/AutoAssignPFA")
+        ),
+      },
+
+      {
+        path: "/pfa/assign-manual",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/AssignPfaManually")
+        ),
+      },
+
+      {
         path: "/internships/manage-internships",
         element: lazy(
           () =>
