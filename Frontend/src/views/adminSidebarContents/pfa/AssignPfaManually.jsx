@@ -3,6 +3,8 @@ import { Button, Typography, message, Select, Spin, Switch } from "antd";
 import { fetchPFAs, assignPfaManually } from "../../../services/pfaService";
 import { getStudents } from "../../../services/studentsService";
 import Swal from "sweetalert2";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeftOutlined } from "@ant-design/icons"; // ✅ Ajouté
 
 const { Title } = Typography;
 const { Option } = Select;
@@ -13,7 +15,8 @@ const AssignPfaManually = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedPfa, setSelectedPfa] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [forceAssign, setForceAssign] = useState(false); // Nouvelle variable
+  const [forceAssign, setForceAssign] = useState(false);
+  const navigate = useNavigate(); // ✅ Ajouté
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,7 +64,7 @@ const AssignPfaManually = () => {
           const result = await assignPfaManually(
             selectedPfa._id,
             selectedStudent._id,
-            forceAssign // <-- ici le booléen
+            forceAssign
           );
 
           Swal.fire(
@@ -84,6 +87,16 @@ const AssignPfaManually = () => {
 
   return (
     <div style={{ padding: 24 }}>
+      {/* ✅ Bouton de retour ajouté */}
+      <Button
+        type="link"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate("/pfa/validate-pfa")}
+        style={{ marginBottom: 16, paddingLeft: 0 }}
+      >
+        Retour à la validation
+      </Button>
+
       <Title level={3}>Affectation Manuelle des PFAs</Title>
 
       <div style={{ marginBottom: 16 }}>
@@ -122,7 +135,7 @@ const AssignPfaManually = () => {
         >
           {pfas.map((pfa) => (
             <Option key={pfa._id} value={pfa._id}>
-              {pfa.title} ({pfa.teacher?.name || "Sans enseignant"})
+              {pfa.title}
             </Option>
           ))}
         </Select>

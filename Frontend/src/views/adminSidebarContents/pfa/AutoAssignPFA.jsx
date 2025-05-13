@@ -3,6 +3,7 @@ import { Table, Button, Typography, message, Spin } from "antd";
 import { fetchPFAs, autoAssignPFAs } from "../../../services/pfaService";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 
 const { Title } = Typography;
 
@@ -85,12 +86,12 @@ const AutoAssignPFA = () => {
       dataIndex: "title",
       key: "title",
     },
-    {
-      title: "Enseignant",
-      dataIndex: "teacher",
-      key: "teacher",
-      render: (teacher) => teacher?.name || "Non spécifié",
-    },
+    // {
+    //   title: "Enseignant",
+    //   dataIndex: "teacher",
+    //   key: "teacher",
+    //   render: (teacher) => teacher?.name || "Non spécifié",
+    // },
     {
       title: "Année",
       dataIndex: "year",
@@ -100,6 +101,15 @@ const AutoAssignPFA = () => {
 
   return (
     <div style={{ padding: "24px" }}>
+      <Button
+        type="link"
+        icon={<ArrowLeftOutlined />}
+        onClick={() => navigate("/pfa/validate-pfa")}
+        style={{ marginBottom: 16, paddingLeft: 0 }}
+      >
+        Retour à la validation
+      </Button>
+
       <Title level={3}>
         Sélectionner les PFAs pour l’Affectation Automatique
       </Title>
