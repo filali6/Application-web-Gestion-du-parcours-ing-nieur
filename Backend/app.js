@@ -69,7 +69,7 @@ app.use('/dashboard', dashboardRoutes);
 
 
 //Notifications sent to mail using node cron//
-// scheduleCronJobs();
+scheduleCronJobs();
 // scheduleCronJobs1();
 // startCronJob();
 //CONNECT TO DATABASE///
