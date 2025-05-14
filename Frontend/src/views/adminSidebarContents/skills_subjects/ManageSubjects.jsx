@@ -14,7 +14,13 @@ import {
   getTeachers,
   getStudents,
   restoreSubject,
+  getSubjectDetails,
+  validateProposition,
+  fetchStudentsByLevelAndOption,
+  sendEvaluationEmailsToStudents,
+  getSubjectEvaluations,
 } from "../../../services/subjects.service";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -27,24 +33,45 @@ const ManageSubjects = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [tab, setTab] = useState("active");
-
+  const [subjectDetailsModal, setSubjectDetailsModal] = useState(false);
+  const [subjectDetails, setSubjectDetails] = useState(null);
   const [teachers, setTeachers] = useState([]);
-  const [students, setStudents] = useState([]);
+  const { user } = useAuth();
 
+  const [filterTeacher, setFilterTeacher] = useState(null);
+  const [filterLevel, setFilterLevel] = useState("");
+  const [filterSemester, setFilterSemester] = useState("");
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [selectedCurriculum, setSelectedCurriculum] = useState(null);
+  const [showStudentsModal, setShowStudentsModal] = useState(false);
+  const [showCurriculumModal, setShowCurriculumModal] = useState(false);
+  const [filteredStudents, setFilteredStudents] = useState([]);
+  const [showEvaluationsModal, setShowEvaluationsModal] = useState(false);
+  const [evaluationsData, setEvaluationsData] = useState([]);
+  const [evaluationPage, setEvaluationPage] = useState(1);
+  const EVALS_PER_PAGE = 5;
+
+  const levelOptions = [
+    { value: 1, label: "1st" },
+    { value: 2, label: "2nd" },
+    { value: 3, label: "3rd" },
+  ];
+  const optionOptions = [
+    { value: "inLog", label: "INLOG" },
+    { value: "inRev", label: "INREV" },
+  ];
+  const activeSubjects = subjects.filter((s) => !s.isArchived);
+  const hasActiveSubjects = activeSubjects.length > 0;
   const [form, setForm] = useState({
     title: "",
-    level: "",
+    level: null,
+    option: null, // NEW
     semester: "",
     curriculum: { chapters: [{ title: "", sections: [] }] },
     assignedTeacher: null,
     assignedStudent: [],
     year: new Date().getFullYear(),
   });
-
-  const [selectedStudents, setSelectedStudents] = useState([]);
-  const [selectedCurriculum, setSelectedCurriculum] = useState(null);
-  const [showStudentsModal, setShowStudentsModal] = useState(false);
-  const [showCurriculumModal, setShowCurriculumModal] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -77,11 +104,34 @@ const ManageSubjects = () => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
+  const handleViewDetails = async (id) => {
+    try {
+      const res = await getSubjectDetails(id);
+      setSubjectDetails(res.subject);
+      setSubjectDetailsModal(true);
+    } catch (err) {
+      Swal.fire("Error", "Failed to fetch subject details", "error");
+    }
+  };
 
   const handleCurriculumChange = (index, field, value) => {
     const updated = [...form.curriculum.chapters];
     updated[index][field] = value;
     setForm((prev) => ({ ...prev, curriculum: { chapters: updated } }));
+  };
+
+  const handleViewEvaluations = async (subjectId) => {
+    try {
+      const res = await getSubjectEvaluations(subjectId);
+      if (!res.evaluations.length) {
+        return Swal.fire("Info", "No evaluations available.", "info");
+      }
+      setEvaluationsData(res.evaluations);
+      setEvaluationPage(1);
+      setShowEvaluationsModal(true);
+    } catch (err) {
+      Swal.fire("Error", "Failed to load evaluations.", "error");
+    }
   };
 
   const handleSectionChange = (chapterIndex, sectionIndex, value) => {
@@ -110,6 +160,9 @@ const ManageSubjects = () => {
 
     const payload = {
       ...form,
+      level: String(form.level?.value || ""),
+      semester: form.semester || "",
+      option: form.option?.value || null,
       assignedTeacher: form.assignedTeacher?.value || null,
       assignedStudent: form.assignedStudent.map((s) => s.value),
     };
@@ -146,6 +199,30 @@ const ManageSubjects = () => {
       }
     }
   };
+  const handleValidateProposition = async (id) => {
+    const confirm = await Swal.fire({
+      title: "Validate Proposition?",
+      text: "This will apply the proposed changes and move the current version to history.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Validate",
+      cancelButtonText: "Cancel",
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        await validateProposition(id); // calls subject.service.js
+        await fetchData(); // refresh list after validation
+        Swal.fire("Success", "Proposition has been validated.", "success");
+      } catch (err) {
+        Swal.fire(
+          "Error",
+          err.response?.data?.error || "Validation failed.",
+          "error"
+        );
+      }
+    }
+  };
 
   const resetForm = () => {
     setForm({
@@ -159,11 +236,47 @@ const ManageSubjects = () => {
     });
   };
 
+  const fetchStudentsAutoFill = async (level, option = null) => {
+    try {
+      const students = await fetchStudentsByLevelAndOption(level, option);
+      const options = students.map((s) => ({
+        label: `${s.firstName} ${s.lastName}`,
+        value: s._id,
+      }));
+      setFilteredStudents(options);
+      setForm((prev) => ({
+        ...prev,
+        assignedStudent: options, // auto-fill
+      }));
+    } catch (err) {
+      console.error("Failed to auto-fill students", err);
+      Swal.fire("Error", "Failed to auto-load students", "error");
+    }
+  };
+
   const handleEdit = (subject) => {
+    const levelOptions = [
+      { value: "1", label: "1st" },
+      { value: "2", label: "2nd" },
+      { value: "3", label: "3rd" },
+    ];
+    const optionOptions = [
+      { value: "inLog", label: "INLOG" },
+      { value: "inRev", label: "INREV" },
+    ];
+
+    const matchedLevel = levelOptions.find(
+      (opt) => opt.value === String(subject.level)
+    );
+    const matchedOption = optionOptions.find(
+      (opt) => opt.value === subject.option
+    );
+
     setEditingSubject(subject);
     setForm({
       title: subject.title,
-      level: subject.level,
+      level: matchedLevel || null,
+      option: matchedOption || null,
       semester: subject.semester,
       curriculum: subject.curriculum || { chapters: [] },
       assignedTeacher: subject.assignedTeacher
@@ -179,6 +292,17 @@ const ManageSubjects = () => {
         })) || [],
       year: subject.year || new Date().getFullYear(),
     });
+
+    // Preload students
+    if (subject.level === "1") {
+      fetchStudentsAutoFill("1");
+    } else if (
+      (subject.level === "2" || subject.level === "3") &&
+      subject.option
+    ) {
+      fetchStudentsAutoFill(subject.level, subject.option);
+    }
+
     setShowModal(true);
   };
 
@@ -236,6 +360,50 @@ const ManageSubjects = () => {
       }
     }
   };
+  const handleSendEvaluationEmails = async () => {
+    const activeSubjects = subjects.filter((s) => !s.isArchived);
+
+    // Check if all active subjects are published
+    const allPublished = activeSubjects.every((s) => s.isPublished);
+
+    if (!allPublished) {
+      Swal.fire({
+        icon: "warning",
+        title: "Unpublished Subjects",
+        text: "Please publish all active subjects before sending evaluation emails.",
+      });
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      icon: "question",
+      title: "Send Evaluation Emails?",
+      text: "This will send evaluation email notifications to students for all active subjects.",
+      showCancelButton: true,
+      confirmButtonText: "Yes, Send",
+      cancelButtonText: "Cancel",
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    // Show loading
+    Swal.fire({
+      title: "Sending emails...",
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    try {
+      await sendEvaluationEmailsToStudents();
+      Swal.fire("Success", "Evaluation emails sent to students.", "success");
+    } catch (err) {
+      const message = err.response?.data?.error || "Failed to send emails.";
+      Swal.fire("Error", message, "error");
+    }
+  };
 
   const handleTogglePublish = async (publish) => {
     try {
@@ -279,21 +447,29 @@ const ManageSubjects = () => {
       const shouldPublish = !subjects
         .filter((s) => !s.isArchived)
         .some((s) => !s.isPublished); // matches global publish state
-  
+
       await restoreSubject(id, shouldPublish);
       fetchData();
       Swal.fire("Restored!", "Subject has been restored.", "success");
     } catch (err) {
-      Swal.fire("Error", err.response?.data?.message || "Restore failed.", "error");
+      Swal.fire(
+        "Error",
+        err.response?.data?.message || "Restore failed.",
+        "error"
+      );
     }
   };
-  
 
-  const filtered = (
-    tab === "active"
-      ? subjects.filter((s) => !s.isArchived) // hide archived from active
-      : archivedSubjects
-  ).filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
+  const baseSubjects =
+    tab === "active" ? subjects.filter((s) => !s.isArchived) : archivedSubjects;
+
+  const filtered = baseSubjects
+    .filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    .filter((s) =>
+      filterTeacher ? s.assignedTeacher?._id === filterTeacher.value : true
+    )
+    .filter((s) => (filterLevel ? s.level === filterLevel : true))
+    .filter((s) => (filterSemester ? s.semester === filterSemester : true));
 
   const pageCount = Math.ceil(filtered.length / ITEMS_PER_PAGE);
   const paginated = filtered.slice(
@@ -358,6 +534,10 @@ const ManageSubjects = () => {
     );
   };
 
+  const propositionSubjects = subjects.filter(
+    (s) => s.propositions?.length > 0
+  );
+
   return (
     <div className="p-4">
       {/* Tabs */}
@@ -375,6 +555,31 @@ const ManageSubjects = () => {
           >
             Archived Subjects
           </button>
+          <div className="position-relative d-inline-block">
+            <button
+              className={`btn ${tab === "propositions" ? "btn-primary shadow" : "btn-link text-primary"}`}
+              onClick={() => setTab("propositions")}
+            >
+              Propositions
+            </button>
+            {subjects.filter((s) => s.propositions?.length > 0).length > 0 && (
+              <span
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                style={{ fontSize: "0.6rem" }}
+              >
+                {subjects.filter((s) => s.propositions?.length > 0).length}
+              </span>
+            )}
+          </div>
+          {(user.role === "admin" ||
+            subjects.some((s) => s.assignedTeacher?._id === user._id)) && (
+            <button
+              className={`btn ${tab === "evaluations" ? "btn-primary shadow" : "btn-link text-primary"}`}
+              onClick={() => setTab("evaluations")}
+            >
+              Evaluations
+            </button>
+          )}
         </div>
       </div>
 
@@ -389,6 +594,7 @@ const ManageSubjects = () => {
           }}
           style={{ maxWidth: "300px" }}
         />
+
         <div className="d-flex gap-2">
           {tab === "active" && (
             <>
@@ -404,32 +610,198 @@ const ManageSubjects = () => {
               </Button>
               <Button
                 variant={
-                  subjects.some((s) => !s.isPublished) ? "secondary" : "dark"
+                  activeSubjects.some((s) => !s.isPublished)
+                    ? "secondary"
+                    : "dark"
                 }
-                disabled={subjects.filter((s) => !s.isArchived).length === 0}
+                disabled={!hasActiveSubjects}
                 onClick={() =>
                   handleTogglePublish(
-                    subjects
-                      .filter((s) => !s.isArchived)
-                      .some((s) => !s.isPublished)
+                    activeSubjects.some((s) => !s.isPublished)
                   )
                 }
               >
-                {subjects
-                  .filter((s) => !s.isArchived)
-                  .some((s) => !s.isPublished)
+                {activeSubjects.some((s) => !s.isPublished)
                   ? "📢 Publish All"
                   : "🙈 Unpublish All"}
+              </Button>
+
+              <Button
+                variant="success"
+                className="ms-2"
+                onClick={handleSendEvaluationEmails}
+                disabled={!hasActiveSubjects}
+              >
+                📧 Send Evaluation Emails
               </Button>
             </>
           )}
         </div>
       </div>
 
+      <Row className="mb-3">
+        <Col md={3}>
+          <Select
+            options={baseSubjects
+              .filter((s) => s.assignedTeacher)
+              .map((s) => s.assignedTeacher)
+              .filter(
+                (t, i, arr) => arr.findIndex((x) => x._id === t._id) === i
+              ) // remove duplicates
+              .map((t) => ({
+                label: `${t.firstName} ${t.lastName}`,
+                value: t._id,
+              }))}
+            isClearable
+            placeholder="Filter by Teacher"
+            value={filterTeacher}
+            onChange={setFilterTeacher}
+          />
+        </Col>
+        <Col md={3}>
+          <Form.Select
+            value={filterLevel}
+            onChange={(e) => setFilterLevel(e.target.value)}
+          >
+            <option value="">All Levels</option>
+            {[...new Set(baseSubjects.map((s) => s.level))].map((level, i) => (
+              <option key={i} value={level}>
+                {level}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+        <Col md={3}>
+          <Form.Select
+            value={filterSemester}
+            onChange={(e) => setFilterSemester(e.target.value)}
+          >
+            <option value="">All Semesters</option>
+            {[...new Set(baseSubjects.map((s) => s.semester))].map((sem, i) => (
+              <option key={i} value={sem}>
+                {sem}
+              </option>
+            ))}
+          </Form.Select>
+        </Col>
+      </Row>
+
       {/* Table */}
       {loading ? (
         <div className="text-center py-5">
           <Spinner animation="border" />
+        </div>
+      ) : tab === "propositions" ? (
+        <div className="table-responsive mt-3">
+          <Table bordered hover>
+            <thead>
+              <tr>
+                <th>Subject Name</th>
+                <th>Current Level</th>
+                <th>Proposed Level</th>
+                <th>Current Semester</th>
+                <th>Proposed Semester</th>
+                <th>Reason</th>
+                <th>Submitted By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {propositionSubjects.map((subject) => {
+                const latest =
+                  subject.propositions[subject.propositions.length - 1];
+                const submittedBy = latest?.submittedBy;
+
+                return (
+                  <tr key={subject._id}>
+                    <td>
+                      {subject.title}
+                      {(user.role === "admin" ||
+                        subject.assignedTeacher?._id === user._id) &&
+                        subject.evaluations?.length > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline-dark"
+                            className="ms-2"
+                            onClick={() => handleViewEvaluations(subject._id)}
+                          >
+                            📊
+                          </Button>
+                        )}
+                    </td>
+
+                    <td>{subject.level}</td>
+                    <td>{latest?.changes?.level || "-"}</td>
+                    <td>{subject.semester}</td>
+                    <td>{latest?.changes?.semester || "-"}</td>
+                    <td>
+                      {latest?.reason || (
+                        <i className="text-muted">No reason</i>
+                      )}
+                    </td>
+                    <td>
+                      {submittedBy ? (
+                        `${submittedBy.firstName} ${submittedBy.lastName}`
+                      ) : (
+                        <i className="text-muted">Unknown</i>
+                      )}
+                    </td>
+                    <td>
+                      <Button
+                        variant="success"
+                        size="sm"
+                        onClick={() => handleValidateProposition(subject._id)}
+                      >
+                        Validate
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+        </div>
+      ) : tab === "evaluations" ? (
+        <div className="table-responsive mt-3">
+          <Table bordered hover>
+            <thead>
+              <tr>
+                <th>Subject Name</th>
+                <th>Teacher</th>
+                <th># of Evaluations</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subjects
+                .filter(
+                  (s) =>
+                    s.evaluations?.length > 0 &&
+                    (user.role === "admin" ||
+                      s.assignedTeacher?._id === user._id)
+                )
+                .map((s) => (
+                  <tr key={s._id}>
+                    <td>{s.title}</td>
+                    <td>
+                      {s.assignedTeacher
+                        ? `${s.assignedTeacher.firstName} ${s.assignedTeacher.lastName}`
+                        : "-"}
+                    </td>
+                    <td>{s.evaluations.length}</td>
+                    <td>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleViewEvaluations(s._id)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </Table>
         </div>
       ) : (
         <>
@@ -438,7 +810,7 @@ const ManageSubjects = () => {
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>Title</th>
+                  <th>Subject Name</th>
                   <th>Level</th>
                   <th>Semester</th>
                   <th>Year</th>
@@ -511,17 +883,14 @@ const ManageSubjects = () => {
                           >
                             Delete
                           </Button>
-                          {/* <Button
-                            variant={
-                              subject.isPublished ? "primary" : "secondary"
-                            }
+                          <Button
+                            variant="info"
                             size="sm"
-                            onClick={() =>
-                              handleToggleIndividualPublish(subject)
-                            }
+                            className="me-2"
+                            onClick={() => handleViewDetails(subject._id)}
                           >
-                            {subject.isPublished ? "Unpublish" : "Publish"}
-                          </Button> */}
+                            Details
+                          </Button>
                         </>
                       ) : (
                         <Button
@@ -649,6 +1018,209 @@ const ManageSubjects = () => {
           )}
         </Modal.Body>
       </Modal>
+      <Modal
+        show={subjectDetailsModal}
+        onHide={() => setSubjectDetailsModal(false)}
+        size="lg"
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Subject Details & History</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {subjectDetails ? (
+            <>
+              <h5 className="mb-2">📘 {subjectDetails.title}</h5>
+              <p>
+                <strong>Level:</strong> {subjectDetails.level} <br />
+                <strong>Semester:</strong> {subjectDetails.semester}
+              </p>
+
+              <hr />
+              <h6>📚 Curriculum</h6>
+              {subjectDetails.curriculum?.chapters?.map((ch, i) => (
+                <div key={i} className="mb-2 border rounded bg-light p-2">
+                  <strong>Chapter {i + 1}:</strong> {ch.title}
+                  <ul className="mt-1">
+                    {ch.sections?.map((s, j) => (
+                      <li key={j}>🔹 {s}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              <hr />
+              <h6>🕘 Modification History</h6>
+              {subjectDetails.history?.length > 0 ? (
+                subjectDetails.history
+                  .slice()
+                  .reverse()
+                  .map((entry, i) => (
+                    <div
+                      key={i}
+                      className="mb-2 p-2 bg-white shadow-sm border rounded"
+                    >
+                      <p className="mb-1">
+                        <strong>Date:</strong>{" "}
+                        {new Date(entry.date).toLocaleDateString()} <br />
+                        <strong>Modified By:</strong>{" "}
+                        {entry.submittedBy
+                          ? `${entry.submittedBy.firstName} ${entry.submittedBy.lastName}`
+                          : "Admin"}{" "}
+                        <br />
+                        <strong>Reason:</strong>{" "}
+                        {entry.reason || "No reason provided"}
+                      </p>
+                      <div className="ps-3">
+                        <p className="fw-bold">Previous State:</p>
+                        <ul style={{ fontSize: "0.9rem" }}>
+                          {entry.oldSubject?.title && (
+                            <li>Title: {entry.oldSubject.title}</li>
+                          )}
+                          {entry.oldSubject?.level && (
+                            <li>Level: {entry.oldSubject.level}</li>
+                          )}
+                          {entry.oldSubject?.semester && (
+                            <li>Semester: {entry.oldSubject.semester}</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <p className="text-muted">No history recorded.</p>
+              )}
+            </>
+          ) : (
+            <Spinner animation="border" />
+          )}
+        </Modal.Body>
+      </Modal>
+
+      <Modal
+        show={showEvaluationsModal}
+        onHide={() => setShowEvaluationsModal(false)}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>📊 Student Evaluations</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {evaluationsData.length === 0 ? (
+            <p>No evaluations found.</p>
+          ) : (
+            <>
+              {evaluationsData
+                .slice(
+                  (evaluationPage - 1) * EVALS_PER_PAGE,
+                  evaluationPage * EVALS_PER_PAGE
+                )
+                .map((ev, idx) => (
+                  <div
+                    key={idx}
+                    className="mb-3 p-3 border rounded bg-light shadow-sm"
+                  >
+                    <div className="fw-bold mb-2">
+                      Evaluation #
+                      {(evaluationPage - 1) * EVALS_PER_PAGE + idx + 1}
+                    </div>
+                    {/* <div>
+                      <strong>Score:</strong>{" "}
+                      <span
+                        style={{
+                          color:
+                            ev.score < 3
+                              ? "red"
+                              : ev.score < 6
+                                ? "orange"
+                                : "green",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {ev.score} / 10
+                      </span>
+                    </div> */}
+<div>
+                      <strong>Score:</strong>{" "}
+                      <span
+                        className={`badge ${
+                          ev.score < 3
+                            ? "bg-danger"
+                            : ev.score < 6
+                              ? "bg-warning text-dark"
+                              : "bg-success"
+                        }`}
+                        style={{ fontSize: "0.6rem" }}
+                      >
+                        {ev.score} / 10
+                      </span>
+                    </div>
+                    <div>
+                      <strong>Feedback:</strong>
+                      <br />
+                      <em>{ev.feedback}</em>
+                    </div>
+                  </div>
+                ))}
+
+              {evaluationsData.length > EVALS_PER_PAGE && (
+                <div className="d-flex justify-content-center mt-3">
+                  <ul className="pagination mb-0">
+                    <li
+                      className={`page-item ${evaluationPage === 1 ? "disabled" : ""}`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() => setEvaluationPage((p) => p - 1)}
+                      >
+                        Previous
+                      </button>
+                    </li>
+                    {Array.from(
+                      {
+                        length: Math.ceil(
+                          evaluationsData.length / EVALS_PER_PAGE
+                        ),
+                      },
+                      (_, i) => (
+                        <li
+                          key={i}
+                          className={`page-item ${evaluationPage === i + 1 ? "active" : ""}`}
+                        >
+                          <button
+                            className="page-link"
+                            onClick={() => setEvaluationPage(i + 1)}
+                          >
+                            {i + 1}
+                          </button>
+                        </li>
+                      )
+                    )}
+                    <li
+                      className={`page-item ${evaluationPage === Math.ceil(evaluationsData.length / EVALS_PER_PAGE) ? "disabled" : ""}`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() => setEvaluationPage((p) => p + 1)}
+                      >
+                        Next
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowEvaluationsModal(false)}
+          >
+            Close
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {/* Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} size="lg">
@@ -668,40 +1240,104 @@ const ManageSubjects = () => {
                 required
               />
             </Form.Group>
+
             <Row>
               <Col>
                 <Form.Group className="mb-3">
                   <Form.Label>Level</Form.Label>
-                  <Form.Control
-                    name="level"
+                  <Select
+                    options={levelOptions}
                     value={form.level}
-                    onChange={handleFormChange}
-                    required
+                    onChange={(selected) => {
+                      const lvl = selected?.value;
+                      setForm((prev) => ({
+                        ...prev,
+                        level: selected,
+                        option: null,
+                        assignedStudent: [],
+                      }));
+                      setFilteredStudents([]);
+                      if (lvl === 1) {
+                        fetchStudentsAutoFill(1, null);
+                      }
+                    }}
+                    isClearable
                   />
                 </Form.Group>
+
+                {form.level?.value > 1 && (
+                  <Form.Group className="mb-3">
+                    <Form.Label>Option</Form.Label>
+                    <Select
+                      options={optionOptions}
+                      value={form.option}
+                      onChange={(selected) => {
+                        const lvl = form.level?.value;
+                        const opt = selected?.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          option: selected,
+                          assignedStudent: [],
+                        }));
+                        if (lvl && opt) {
+                          fetchStudentsAutoFill(lvl, opt);
+                        }
+                      }}
+                      isClearable
+                    />
+                    {!form.option && (
+                      <small className="text-muted">
+                        Please select an option to load students.
+                      </small>
+                    )}
+                  </Form.Group>
+                )}
               </Col>
+
               <Col>
                 <Form.Group className="mb-3">
                   <Form.Label>Semester</Form.Label>
-                  <Form.Control
-                    name="semester"
-                    value={form.semester}
-                    onChange={handleFormChange}
-                    required
+                  <Select
+                    options={[
+                      { value: "1st Semester", label: "1st Semester" },
+                      { value: "2nd Semester", label: "2nd Semester" },
+                    ]}
+                    value={
+                      form.semester
+                        ? { value: form.semester, label: form.semester }
+                        : null
+                    }
+                    onChange={(selected) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        semester: selected?.value || "",
+                      }))
+                    }
+                    isClearable
                   />
                 </Form.Group>
               </Col>
-              <Col>
+
+              {/* <Col>
                 <Form.Group className="mb-3">
-                  <Form.Label>Year</Form.Label>
-                  <Form.Control
-                    type="number"
-                    name="year"
-                    value={form.year}
-                    onChange={handleFormChange}
+                  <Form.Label>Assigned Students</Form.Label>
+                  <Select
+                    isMulti
+                    isDisabled={
+                      !form.level?.value ||
+                      (form.level?.value > 1 && !form.option?.value)
+                    }
+                    options={filteredStudents}
+                    value={form.assignedStudent}
+                    onChange={(selected) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        assignedStudent: selected,
+                      }))
+                    }
                   />
                 </Form.Group>
-              </Col>
+              </Col> */}
             </Row>
 
             <Form.Group className="mb-3">
@@ -722,13 +1358,17 @@ const ManageSubjects = () => {
               <Form.Label>Assigned Students</Form.Label>
               <Select
                 isMulti
-                options={students.map((s) => ({
-                  label: `${s.firstName} ${s.lastName}`,
-                  value: s._id,
-                }))}
+                isDisabled={
+                  !form.level?.value ||
+                  (form.level?.value > 1 && !form.option?.value)
+                }
+                options={filteredStudents}
                 value={form.assignedStudent}
                 onChange={(selected) =>
-                  setForm((prev) => ({ ...prev, assignedStudent: selected }))
+                  setForm((prev) => ({
+                    ...prev,
+                    assignedStudent: selected,
+                  }))
                 }
               />
             </Form.Group>
@@ -764,6 +1404,7 @@ const ManageSubjects = () => {
               + Add Chapter
             </Button>
           </Modal.Body>
+
           <Modal.Footer>
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancel
@@ -773,8 +1414,9 @@ const ManageSubjects = () => {
               type="submit"
               disabled={
                 !form.title.trim() ||
-                !form.level.trim() ||
-                !form.semester.trim() ||
+                !form.level?.value ||
+                (Number(form.level?.value) >= 2 && !form.option?.value) ||
+                !form.semester?.trim() ||
                 form.curriculum.chapters.length < 1 ||
                 !form.curriculum.chapters[0].title.trim() ||
                 form.curriculum.chapters[0].sections.length < 1 ||
