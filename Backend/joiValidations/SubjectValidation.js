@@ -11,6 +11,14 @@ export const validateSubject = (req, res, next) => {
     semester: Joi.string().required().messages({
       "string.empty": "Semester is a required field",
     }),
+    option: Joi.when("level", {
+      is: Joi.valid("2", "3"),
+      then: Joi.string().valid("inLog", "inRev").required().messages({
+        "any.required": "Option is required for level 2 or 3",
+        "any.only": "Option must be either 'inLog' or 'inRev'",
+      }),
+      otherwise: Joi.valid(null).optional(),
+    }),
     curriculum: Joi.object({
       chapters: Joi.array().messages({
         "array.includes": "chapters must be a valid list",
@@ -33,9 +41,11 @@ export const validateSubject = (req, res, next) => {
       )
       .optional(),
   });
+
   const { error } = subjectSchema.validate(req.body);
   if (error) {
     return res.status(400).json({ message: error.details[0].message });
   }
+
   next();
 };
