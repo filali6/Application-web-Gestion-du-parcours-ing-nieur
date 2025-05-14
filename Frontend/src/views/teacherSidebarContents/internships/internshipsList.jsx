@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { Modal, Button, Form, Container } from "react-bootstrap";
+import { Table, Button, Space, Tag, Modal, Form, Input, Spin } from "antd";
+import {
+  EditOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  LinkOutlined,
+  FileTextOutlined,
+  UserOutlined,
+  MailOutlined,
+} from "@ant-design/icons";
 import { fetchTeacherTopics, getPlansDetails, updateSoutenance } from "./internshipsListservice";
-import GenericList from "../../../components/Generic/GenericList";
+
+const { TextArea } = Input;
 
 const InternshipsList = () => {
   // États pour gérer le modal
@@ -10,7 +20,7 @@ const InternshipsList = () => {
   const [allTopics, setAllTopics] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // États pour les champs du formulaire - nouveaux noms
+  // États pour les champs du formulaire
   const [horaire, setHoraire] = useState("");
   const [date, setDate] = useState("");
   const [googleMeetLink, setGoogleMeetLink] = useState("");
@@ -28,72 +38,65 @@ const InternshipsList = () => {
 
   // Charger les sujets initialement
   useEffect(() => {
-    const loadTopics = async () => {
-      try {
-        setLoading(true);
-
-        const [topicsData, plansData] = await Promise.all([
-          fetchTeacherTopics(),
-          getPlansDetails(),
-        ]);
-
-        console.log("Topics récupérés :", topicsData);
-        console.log("Plans récupérés :", plansData);
-
-        // Fusionner chaque topic avec son plan associé s’il existe
-        const topicsWithSchedule = topicsData.map((topic) => {
-          // On suppose que topic._id ou topic.sujetId correspond au sujet du plan
-          const matchingPlan = plansData.find(
-            (plan) =>
-              plan.sujet?._id === topic._id || plan.sujet?._id === topic.sujetId
-          );
-
-          const planningData = matchingPlan
-            ? {
-                date: matchingPlan.date || "",
-                horaire: matchingPlan.horaire || "",
-                googleMeetLink: matchingPlan.googleMeetLink || "",
-              }
-            : {
-                date: "",
-                horaire: "",
-                googleMeetLink: "",
-              };
-
-          console.log(
-            `Planning pour le sujet ${topic._id || topic.sujetId}:`,
-            planningData
-          );
-
-          return {
-            ...topic,
-            ...planningData,
-          };
-        });
-
-        setAllTopics(topicsWithSchedule);
-      } catch (err) {
-        console.error("Erreur lors du chargement des sujets et plans:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadTopics();
   }, []);
-  
 
-  // Fonction dédiée à la gestion des clics sur les lignes
-  const handleRowClick = (topic) => {
-    console.log("Fonction handleRowClick appelée avec:", topic);
-    openModal(topic);
+  const loadTopics = async () => {
+    try {
+      setLoading(true);
+
+      const [topicsData, plansData] = await Promise.all([
+        fetchTeacherTopics(),
+        getPlansDetails(),
+      ]);
+
+      console.log("Topics récupérés :", topicsData);
+      console.log("Plans récupérés :", plansData);
+
+      // Fusionner chaque topic avec son plan associé s'il existe
+      const topicsWithSchedule = topicsData.map((topic) => {
+        // On suppose que topic._id ou topic.sujetId correspond au sujet du plan
+        const matchingPlan = plansData.find(
+          (plan) =>
+            plan.sujet?._id === topic._id || plan.sujet?._id === topic.sujetId
+        );
+
+        const planningData = matchingPlan
+          ? {
+              date: matchingPlan.date || "",
+              horaire: matchingPlan.horaire || "",
+              googleMeetLink: matchingPlan.googleMeetLink || "",
+            }
+          : {
+              date: "",
+              horaire: "",
+              googleMeetLink: "",
+            };
+
+        console.log(
+          `Planning pour le sujet ${topic._id || topic.sujetId}:`,
+          planningData
+        );
+
+        return {
+          ...topic,
+          ...planningData,
+        };
+      });
+
+      setAllTopics(topicsWithSchedule);
+    } catch (err) {
+      console.error("Erreur lors du chargement des sujets et plans:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fonction pour ouvrir le modal
   const openModal = (topic) => {
     console.log("Ouverture du modal pour le sujet:", topic.sujetId);
     setSelectedTopic(topic);
-    setHoraire(topic.horaire|| "");
+    setHoraire(topic.horaire || "");
     setDate(topic.date || "");
     setGoogleMeetLink(topic.googleMeetLink || "");
     setShowModal(true);
@@ -105,7 +108,6 @@ const InternshipsList = () => {
     setSelectedTopic(null);
   };
 
-  // Fonction pour sauvegarder les modifications
   // Fonction pour sauvegarder les modifications
   const handleSaveChanges = async () => {
     if (selectedTopic) {
@@ -119,7 +121,8 @@ const InternshipsList = () => {
           horaire,
           googleMeetLink
         );
-           console.log("Données retournées après mise à jour:", result || "Aucune donnée retournée");
+        console.log("Données retournées après mise à jour:", result);
+        
         // Mise à jour locale des sujets après succès de l'appel API
         const updatedTopics = allTopics.map((topic) => {
           if (topic.sujetId === selectedTopic.sujetId) {
@@ -137,209 +140,230 @@ const InternshipsList = () => {
 
         setAllTopics(updatedTopics);
 
-        // Afficher un message de succès (optionnel)
-        alert("La soutenance a été planifiée avec succès!");
+        // Afficher un message de succès
+        Modal.success({
+          title: 'Succès',
+          content: 'La soutenance a été planifiée avec succès!',
+        });
 
         // Fermer le modal
         handleCloseModal();
       } catch (error) {
         console.error("Erreur lors de la mise à jour de la soutenance:", error);
-        console.error("Message d'erreur:", error.message);
-        console.error("Stack trace:", error.stack);
-        alert(
-          "Erreur lors de la planification de la soutenance. Veuillez réessayer."
-        );
+        
+        // Afficher un message d'erreur
+        Modal.error({
+          title: 'Erreur',
+          content: 'Erreur lors de la planification de la soutenance. Veuillez réessayer.',
+        });
       }
     }
   };
 
-  // Fonction qui sera utilisée comme fetchItems pour le GenericList
-  const getTopics = async () => {
-    // Retourne les données déjà chargées
-    console.log("getTopics retourne:", allTopics);
-    return allTopics;
-  };
-
-  // Configuration pour le GenericList
-  const internshipsConfig = {
-    title: "Assigned Subjects",
-    fetchItems: getTopics,
-    columns: [
-      { key: "sujetTitre", header: "Title Subject" },
-      { key: "studentName", header: "Student" },
-      { key: "studentEmail", header: "Email" },
-      { key: "schedule", header: "Schedule" },
-      { key: "documents", header: "Documents" },
-      { key: "pv", header: "PV" },
-    ],
-    // Définir explicitement la fonction de clic de ligne
-    onRowClick: handleRowClick,
-    customRenderers: {
-      sujetTitre: (topic) => {
-        console.log("Rendu de la cellule sujetTitre pour:", topic.sujetId);
-        return (
-          <td
-            key="sujetTitre"
-            onClick={() => openModal(topic)}
-            style={{ cursor: "pointer" }}
-          >
-            {topic.sujetTitre}
-          </td>
-        );
-      },
-      studentName: (topic) => (
-        <td key="studentName">{topic.studentName || "Non précisé"}</td>
-      ),
-      studentEmail: (topic) => <td key="studentEmail">{topic.studentEmail}</td>,
-      schedule: (topic) => { // Console.log de débogage pour voir les valeurs lors du rendu
-      console.log("Rendu schedule pour topic:", { 
-        id: topic.sujetId, 
-        date: topic.date, 
-        horaire: topic.horaire, 
-        googleMeetLink: topic.googleMeetLink 
-      }); 
-      return (
-        <td key="schedule">
-          {topic.date && topic.horaire ? (
-            <div>
-              <div>
-                <strong>Date:</strong> {formatDate(topic.date)}
-              </div>
-              <div>
-                <strong>Heure:</strong> {topic.horaire}
-              </div>
-              {topic.googleMeetLink && (
-                <div>
-                  <a
-                    href={topic.googleMeetLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Lien Google Meet
-                  </a>
-                </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-muted">Non planifié</span>
+  // Définition des colonnes pour la Table Ant Design
+  const columns = [
+    {
+      title: "Titre",
+      dataIndex: "sujetTitre",
+      key: "sujetTitre",
+      render: (text, record) => <strong>{text}</strong>,
+    },
+    {
+      title: "Étudiant",
+      dataIndex: "studentName",
+      key: "studentName",
+      render: (text, record) => (
+        <Space direction="vertical" size="small">
+          <span>
+            <UserOutlined /> {text || "Non précisé"}
+          </span>
+          {record.studentEmail && (
+            <span>
+              <MailOutlined /> {record.studentEmail}
+            </span>
           )}
-        </td>
-      )},
-      documents: (topic) => (
-        <td key="documents">
-          {topic.documents && topic.documents.length > 0
-            ? topic.documents.map((doc, i) => (
-                <div key={i}>
-                  <a
-                    href={`http://localhost:5000/uploads/${doc.filename}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download={doc.title}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    📄{doc.title}
-                  </a>
-                </div>
-              ))
-            : "Aucun document"}
-        </td>
+        </Space>
       ),
-      pv: (topic) => <td key="pv">{topic.pv ? topic.pv : "Non disponible"}</td>,
     },
-    searchFields: ["sujetTitre", "studentName", "studentEmail"],
-    noItemsMessage: "No subjects found for this teacher",
-    // Style pour indiquer que les lignes sont cliquables
-    trProps: {
-      style: { cursor: "pointer" },
-      // Ajout d'un handler de clic directement sur les lignes tr
-      onClick: (row) => {
-        console.log("Clic sur tr avec les données:", row);
-        handleRowClick(row);
-      },
+    {
+      title: "Planification",
+      key: "schedule",
+      render: (_, record) => (
+        <Space direction="vertical" size="small">
+          {record.date && record.horaire ? (
+            <>
+              <span>
+                <CalendarOutlined /> {formatDate(record.date)}
+              </span>
+              <span>
+                <ClockCircleOutlined /> {record.horaire}
+              </span>
+              {record.googleMeetLink && (
+                <a
+                  href={record.googleMeetLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <LinkOutlined /> Lien Google Meet
+                </a>
+              )}
+            </>
+          ) : (
+            <Tag color="orange">Non planifié</Tag>
+          )}
+        </Space>
+      ),
     },
-  };
+    {
+      title: "Documents",
+      key: "documents",
+      render: (_, record) => (
+        <Space direction="vertical" size="small">
+          {record.documents && record.documents.length > 0 ? (
+            record.documents.map((doc, i) => (
+              <a
+                key={i}
+                href={`http://localhost:5000/uploads/${doc.filename}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download={doc.title}
+              >
+                <FileTextOutlined /> {doc.title}
+              </a>
+            ))
+          ) : (
+            <Tag color="default">Aucun document</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: "PV",
+      key: "pv",
+      render: (_, record) => (
+        <Space>
+          {record.pv ? (
+            <Tag color="green">Disponible</Tag>
+          ) : (
+            <Tag color="default">Non disponible</Tag>
+          )}
+        </Space>
+      ),
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Space direction="vertical">
+          <Button
+            type="primary"
+            icon={<EditOutlined />}
+            onClick={() => openModal(record)}
+            size="middle"
+          >
+            Planifier
+          </Button>
+          <Button
+            type="default"
+            onClick={() => handleFillPV(record)}
+            size="middle"
+          >
+            Remplir PV
+          </Button>
+        </Space>
+      ),
+    },
+  ];
 
   return (
-    <Container>
-      <h2 className="mb-4">Internships List</h2>
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      <h2 style={{ marginBottom: "24px" }}>Assigned Subjects</h2>
 
-      {/* Utilisation du composant GenericList */}
-      <GenericList {...internshipsConfig} />
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Spin size="large" />
+          <div style={{ marginTop: "20px" }}>Chargement des sujets...</div>
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={allTopics}
+          rowKey="sujetId"
+          pagination={{ pageSize: 10 }}
+          bordered
+          style={{ background: "#fff", borderRadius: "8px" }}
+        />
+      )}
 
-      {/* Modal pour planifier un rendez-vous */}
-      <Modal show={showModal} onHide={handleCloseModal} centered>
-        <Modal.Header closeButton>
-          <Modal.Title>
+      {/* Modal pour planifier un rendez-vous (version Ant Design) */}
+      <Modal
+        title={
+          <div>
             Planifier un rendez-vous
             {selectedTopic && (
-              <div className="text-muted fs-6">
+              <div style={{ fontSize: "14px", color: "#999" }}>
                 Sujet: {selectedTopic.sujetTitre}
               </div>
             )}
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {selectedTopic && (
-            <Form>
-              <Form.Group className="mb-3">
-                <Form.Label>Date</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Heure</Form.Label>
-                <Form.Control
-                  type="time"
-                  value={horaire}
-                  onChange={(e) => setHoraire(e.target.value)}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Lien Google Meet</Form.Label>
-                <Form.Control
-                  type="url"
-                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                  value={googleMeetLink}
-                  onChange={(e) => setGoogleMeetLink(e.target.value)}
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Étudiant</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={selectedTopic?.studentName || "Non précisé"}
-                  disabled
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
-                <Form.Control
-                  type="email"
-                  value={selectedTopic?.studentEmail || ""}
-                  disabled
-                />
-              </Form.Group>
-            </Form>
-          )}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseModal}>
+          </div>
+        }
+        open={showModal}
+        onCancel={handleCloseModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseModal}>
             Annuler
-          </Button>
-          <Button variant="primary" onClick={handleSaveChanges}>
+          </Button>,
+          <Button key="submit" type="primary" onClick={handleSaveChanges}>
             Enregistrer
-          </Button>
-        </Modal.Footer>
+          </Button>,
+        ]}
+        width={600}
+      >
+        {selectedTopic && (
+          <Form layout="vertical">
+            <Form.Item label="Date">
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </Form.Item>
+
+            <Form.Item label="Heure">
+              <Input
+                type="time"
+                value={horaire}
+                onChange={(e) => setHoraire(e.target.value)}
+              />
+            </Form.Item>
+
+            <Form.Item label="Lien Google Meet">
+              <Input
+                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                value={googleMeetLink}
+                onChange={(e) => setGoogleMeetLink(e.target.value)}
+              />
+            </Form.Item>
+
+            <Form.Item label="Étudiant">
+              <Input
+                value={selectedTopic?.studentName || "Non précisé"}
+                disabled
+                prefix={<UserOutlined />}
+              />
+            </Form.Item>
+
+            <Form.Item label="Email">
+              <Input
+                value={selectedTopic?.studentEmail || ""}
+                disabled
+                prefix={<MailOutlined />}
+              />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
-    </Container>
+    </div>
   );
 };
 

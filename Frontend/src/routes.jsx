@@ -166,7 +166,16 @@ const routes = [
           () =>
             import("./views/studentSidebarContents/internships/myInternships")
         ),
+      }, // NOTEZ LA VIRGULE ICI
+      // Ajoutez la nouvelle route ici
+      {
+        path: "/internships/details/",
+        element: lazy(
+          () =>
+            import("./views/studentSidebarContents/internships/topicDetails")
+        ),
       },
+
       {
         path: "*",
         exact: "true",

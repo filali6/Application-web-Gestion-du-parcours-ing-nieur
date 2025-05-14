@@ -26,7 +26,7 @@ router.get(
   getFinalinternshipDetails
 );
 
-router.get("/me", loggedMiddleware, isStudent, getStudentInternshipDetails);
+router.get("/me/:id", loggedMiddleware, isStudent, getStudentInternshipDetails);
 router.get("/pv", loggedMiddleware, isStudent, getStudentPVDetails);
 
 router.patch("/:id", loggedMiddleware, isTeacher, updateSoutenance);
