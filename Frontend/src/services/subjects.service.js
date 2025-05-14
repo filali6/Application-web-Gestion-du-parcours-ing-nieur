@@ -69,10 +69,12 @@ export const addSubjectEvaluation = async (id, data) => {
   return res.data;
 };
 
+
 export const getSubjectEvaluations = async (id) => {
   const res = await axios.get(`${API_BASE}/subjects/${id}/evaluation`, getAuthHeader());
   return res.data;
 };
+
 
 export const sendEvaluationEmailsToStudents = async () => {
   const res = await axios.post(`${API_BASE}/subjects/evaluation`, {}, getAuthHeader());
@@ -107,3 +109,14 @@ export const restoreSubject = async (id, publish) => {
   );
   return res.data;
 };
+
+
+export const fetchStudentsByLevelAndOption = async (level, option = null) => {
+  const res = await axios.get(`${API_BASE}/subjects/byLevelOption`, {
+    params: { level, option },
+    ...getAuthHeader(),
+  });
+  return res.data;
+};
+
+
