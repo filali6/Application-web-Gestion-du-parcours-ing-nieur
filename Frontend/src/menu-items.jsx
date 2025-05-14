@@ -118,6 +118,13 @@ const getMenuItems = () => {
       type: 'item',
       icon: 'feather icon-activity',
       url: '/internships/my-internships'
+    },
+    {
+      id: 'student-cv',
+      title: 'My Cv',
+      type: 'item',
+      icon: 'feather icon-file-text',
+      url: '/student/student-cv'
     }
   ];
 
