@@ -36,9 +36,13 @@ const validationSchema = Yup.object().shape({
     .required("Last name is required"),
   dateOfBirth: Yup.date()
     .max(new Date(), "Date of birth cannot be in the future")
-    .optional(),
-  gender: Yup.string().oneOf(["Male", "Female"]).optional(),
-  level: Yup.string().oneOf(["1", "2", "3"]).optional(),
+    .required("Date of birth is required"), // Changé de optional() à required()
+  gender: Yup.string()
+    .oneOf(["Male", "Female"], "Please select a gender")
+    .required("Gender is required"), // Changé de optional() à required()
+  level: Yup.string()
+    .oneOf(["1", "2", "3"], "Please select a level")
+    .required("Level is required"), // Changé de optional() à required()
 });
 
 const initialValues = {
@@ -46,7 +50,7 @@ const initialValues = {
   email: "",
   firstName: "",
   lastName: "",
-  dateOfBirth: "",
+  dateOfBirth: null,
   gender: "",
   level: "",
 };
@@ -61,22 +65,18 @@ const StudentForm = ({ onSuccess, onCancel }) => {
 
       // Vérification du champ 'student' dans la réponse pour détecter un ajout réussi
       if (response?.student?._id) {
-        await Swal.fire(
-          "Ajouté avec succès",
-          "Student added successfully!",
-          "success"
-        );
+        await Swal.fire("Success", "Student added successfully!", "success");
         resetForm();
         onSuccess();
       } else {
         // Traitement des messages d'erreur basés sur la réponse du backend
         const errorMessage = response?.message?.toLowerCase();
         if (errorMessage?.includes("le cin existe déjà")) {
-          Swal.fire("CIN déjà existant", "CIN already exists.", "error");
+          Swal.fire("CIN already exists.", "error");
         } else if (errorMessage?.includes("l'email existe déjà")) {
-          Swal.fire("Email déjà existant", "Email already exists.", "error");
+          Swal.fire("Email already exists.", "error");
         } else {
-          Swal.fire("Échec de l'ajout", "Failed to add student", "error");
+          Swal.fire("Failed to add student", "error");
         }
       }
     } catch (error) {
@@ -323,6 +323,11 @@ const StudentForm = ({ onSuccess, onCancel }) => {
                           <MenuItem value="2">2</MenuItem>
                           <MenuItem value="3">3</MenuItem>
                         </Select>
+                        {touched.level && errors.level && (
+                          <Typography color="error" variant="caption">
+                            {errors.level}
+                          </Typography>
+                        )}
                       </FormControl>
                     </Grid>
                   </Grid>
