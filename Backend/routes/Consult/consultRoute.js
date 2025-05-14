@@ -17,11 +17,11 @@ import { yearFilter } from "../../middlewares/year.js";
 
 const router = express.Router();
 //routes
-router.get("/type", loggedMiddleware, isAdmin, yearFilter, getPlanningsDetails);
+router.get("/type", loggedMiddleware, isAdmin,isTeacher, yearFilter, getPlanningsDetails);
 router.get(
   "/type/final",
   loggedMiddleware,
-  isAdmin,
+  isAdmin,isTeacher,
   yearFilter,
   getFinalinternshipDetails
 );
