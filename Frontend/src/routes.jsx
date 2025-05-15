@@ -102,6 +102,31 @@ const routes = [
         ),
       },
       {
+        path: "/pfa/validate-pfa",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/ValidatePFA")
+        ),
+      },
+      {
+        path: "/pfa/auto-assign",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/AutoAssignPFA")
+        ),
+      },
+
+      {
+        path: "/pfa/assign-manual",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/AssignPfaManually")
+        ),
+      },
+
+      {
+        path: "/internships/manage-internships",
+        element: lazy(
+          () =>
+            import("./views/adminSidebarContents/internships/ManageInternships")
+        ),
         path: "/internships/manage-internships",
         element: lazy(
           () =>
@@ -126,7 +151,7 @@ const routes = [
         ),
       },
       {
-        path: "/subject/subjects-list",
+        path: "/subject-skills/subjects-skills-list",
         element: lazy(
           () => import("./views/teacherSidebarContents/subjects/subjectsList")
         ),
@@ -146,7 +171,7 @@ const routes = [
       },
       // 🔽 Student-specific routes //
       {
-        path: "/skills-subjects/my-skills-subjects",
+        path: "/subjects/my-subjects-list",
         element: lazy(
           () =>
             import(
@@ -180,6 +205,19 @@ const routes = [
         ),
       },
 
+
+      {
+        path: "/student/student-profile",
+        element: lazy(
+          () => import("./views/studentSidebarContents/profile/studentProfile")
+        ),
+      },
+      {
+        path: "/student/student-cv",
+        element: lazy(
+          () => import("./views/studentSidebarContents/cv/studentCV")
+        ),
+      },
       {
         path: "*",
         exact: "true",

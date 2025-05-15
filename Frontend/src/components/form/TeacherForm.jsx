@@ -53,22 +53,18 @@ const TeacherForm = ({ onSuccess, onCancel }) => {
 
       // Vérification du champ 'teacher' dans la réponse pour détecter un ajout réussi
       if (response?.teacher?._id) {
-        await Swal.fire(
-          "Ajouté avec succès",
-          "Teacher added successfully!",
-          "success"
-        );
+        await Swal.fire("Success", "Teacher added successfully!", "success");
         resetForm();
         onSuccess();
       } else {
         // Traitement des messages d'erreur basés sur la réponse du backend
         const errorMessage = response?.message?.toLowerCase();
         if (errorMessage?.includes("le cin existe déjà")) {
-          Swal.fire("CIN déjà existant", "CIN already exists.", "error");
+          Swal.fire("CIN already exists.", "error");
         } else if (errorMessage?.includes("l'email existe déjà")) {
-          Swal.fire("Email déjà existant", "Email already exists.", "error");
+          Swal.fire("Email already exists.", "error");
         } else {
-          Swal.fire("Échec de l'ajout", "Failed to add teacher", "error");
+          Swal.fire("Failed to add teacher", "error");
         }
       }
     } catch (error) {

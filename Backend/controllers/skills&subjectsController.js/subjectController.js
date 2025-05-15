@@ -22,6 +22,7 @@ export const createSubject = async (req, res) => {
       assignedTeacher,
       assignedStudent,
       year,
+      option, // added field
     } = req.body;
 
     // Check if a subject with the same title already exists
@@ -42,26 +43,42 @@ export const createSubject = async (req, res) => {
       }
     }
 
-    // Validate assignedStudent (should be an array)
+    let finalAssignedStudents = [];
+
     if (assignedStudent && assignedStudent.length > 0) {
       const validStudents = await Student.find({
         _id: { $in: assignedStudent },
       });
-
       if (validStudents.length !== assignedStudent.length) {
         return res
           .status(400)
           .json({ message: "One or more assigned students do not exist." });
       }
+      finalAssignedStudents = assignedStudent;
+    } else {
+      const query = { level: Number(level) };
+
+      if (Number(level) === 2 || Number(level) === 3) {
+        if (!option) {
+          return res
+            .status(400)
+            .json({ message: "Option is required for level 2 or 3." });
+        }
+        query.affectedOption = option;
+      }
+
+      const students = await Student.find(query).select("_id");
+      finalAssignedStudents = students.map((s) => s._id);
     }
 
     const newSubject = new Subject({
       title,
       level,
+      option: option || null,
       semester,
       curriculum,
       assignedTeacher,
-      assignedStudent,
+      assignedStudent: finalAssignedStudents,
       year,
     });
 
@@ -81,13 +98,18 @@ export const getSubjects = async (req, res) => {
     let query = { ...filter };
 
     if (role === "admin") {
-      // Admin sees everything, no extra filters
+      // Admin sees everything
     } else if (role === "teacher") {
-      // Teacher sees only published subjects assigned to them
+      // Teacher sees only their own published subjects
       query.assignedTeacher = userId;
       query.isPublished = true;
+
+      // Teacher-specific filters
+      const { level, semester } = req.query;
+      if (level) query.level = level;
+      if (semester) query.semester = semester;
     } else if (role === "student") {
-      // Student sees only published subjects assigned to them
+      // Student sees only their own published subjects
       query.assignedStudent = userId;
       query.isPublished = true;
     } else {
@@ -96,7 +118,8 @@ export const getSubjects = async (req, res) => {
 
     const subjects = await Subject.find(query)
       .populate("assignedTeacher", "firstName lastName email")
-      .populate("assignedStudent", "firstName lastName email");
+      .populate("assignedStudent", "firstName lastName email")
+      .populate("propositions.submittedBy", "firstName lastName email");
 
     res.status(200).json(subjects);
   } catch (error) {
@@ -137,6 +160,7 @@ export const updateSubjectProgress = async (req, res) => {
   const { id } = req.params;
   const { role, userId } = req.auth;
   const { completedSections } = req.body;
+
   try {
     const subject = await Subject.findById(id)
       .populate("assignedTeacher", "email firstName lastName")
@@ -156,17 +180,18 @@ export const updateSubjectProgress = async (req, res) => {
       });
     }
 
-    if (!subject.assignedStudent || subject.assignedStudent.length === 0) {
-      return res.status(400).json({
-        error: `The subject "${subject.title}" does not have any assigned students.`,
-      });
-    }
+    // if (!subject.assignedStudent || subject.assignedStudent.length === 0) {
+    //   return res.status(400).json({
+    //     error: `The subject "${subject.title}" does not have any assigned students.`,
+    //   });
+    // }
 
     if (!Array.isArray(completedSections) || completedSections.length === 0) {
       return res.status(400).json({
         error: "You must provide an array of completed sections with dates.",
       });
     }
+
     subject.progress = subject.progress || [];
     for (const section of completedSections) {
       if (!section.title || !section.completedDate) {
@@ -180,55 +205,56 @@ export const updateSubjectProgress = async (req, res) => {
       });
     }
 
+    // ✅ Mark teacher as having completed advancement
+    subject.assignedTeacherHasAdvanced = true;
+
     await subject.save();
+
     const notifications = [];
     const admins = await Admin.find({}, "email");
-    if (!admins || admins.length === 0) {
-      return res.status(500).json({ error: "No admin accounts found." });
-    }
 
     admins.forEach((admin) => {
-      const adminEmailContent = generateEmailTemplate(
+      const emailContent = generateEmailTemplate(
         `Subject Progress Updated: ${subject.title}`,
-        `<h2 style="font-size: 20px; color: #333; margin-bottom: 5px;">Dear <strong>Admin</strong>,</h2>`,
-        `<p>The progress for the subject <strong>${subject.title}</strong>, taught by the professor <strong>${subject.assignedTeacher?.firstName} ${subject.assignedTeacher?.lastName}</strong>, has been updated.</p><p>Please check the system for further details.</p>`
+        `<h2>Dear Admin,</h2>`,
+        `<p>The progress for subject <strong>${subject.title}</strong> has been updated by <strong>${subject.assignedTeacher?.firstName} ${subject.assignedTeacher?.lastName}</strong>.</p>`
       );
 
       notifications.push(
         sendNotification({
           email: admin.email,
-          subject: `Subject Progress Updated: ${subject.title}`,
-          htmlContent: adminEmailContent,
+          subject: `Progress Updated: ${subject.title}`,
+          htmlContent: emailContent,
         })
       );
     });
 
     subject.assignedStudent.forEach((student) => {
-      const studentEmailContent = generateEmailTemplate(
+      const emailContent = generateEmailTemplate(
         `Subject Progress Updated: ${subject.title}`,
-        `<h2 style="font-size: 20px; color: #333; margin-bottom: 5px;">Dear <strong>${student.firstName} ${student.lastName}</strong>,</h2>`,
-        `<p>The progress for the subject <strong>${subject.title}</strong>, taught by the professor <strong>${subject.assignedTeacher?.firstName} ${subject.assignedTeacher?.lastName}</strong>, has been updated.</p><p>Please check the system for further details.</p>`
+        `<h2>Dear ${student.firstName} ${student.lastName},</h2>`,
+        `<p>The progress for subject <strong>${subject.title}</strong> has been updated.</p>`
       );
 
       notifications.push(
         sendNotification({
           email: student.email,
-          subject: `Subject Progress Updated: ${subject.title}`,
-          htmlContent: studentEmailContent,
+          subject: `Progress Updated: ${subject.title}`,
+          htmlContent: emailContent,
         })
       );
     });
 
     await Promise.all(notifications);
 
-    res.status(200).json({
-      message: "Subject progress updated successfully, notifications sent.",
-    });
+    res
+      .status(200)
+      .json({ message: "Progress updated and notifications sent." });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      error: "An error occurred while updating progress.",
-    });
+    res
+      .status(500)
+      .json({ error: "An error occurred while updating progress." });
   }
 };
 
@@ -299,7 +325,10 @@ export const getEvaluations = async (req, res) => {
       });
     }
     res.status(200).json({
-      evaluations: subject.evaluations,
+      evaluations: subject.evaluations.map(({ feedback, score }) => ({
+        feedback,
+        score,
+      })),
     });
   } catch (error) {
     console.error("Error fetching evaluations:", error);
@@ -315,10 +344,10 @@ export const getSubjectDetails = async (req, res) => {
 
   try {
     // Fetch the subject by ID
-    const subject = await Subject.findById(
-      id,
-      "title level semester curriculum history"
-    ).lean();
+    const subject = await Subject.findById(id)
+      .select("title level semester curriculum history")
+      .populate("history.submittedBy", "firstName lastName")
+      .lean();
 
     if (!subject) {
       return res.status(404).json({ error: "Subject not found." });
@@ -479,29 +508,71 @@ export const validateProposition = async (req, res) => {
 /////////////////////////////////SENT EVALUTION NOTIF FOR STUDENT/////////////////////////////////
 export const sendEvaluationEmailsToStudent = async (req, res) => {
   try {
-    // Fetch all subjects with their assigned students
-    const subjects = await Subject.find().populate(
-      "assignedStudent",
-      "email firstName lastName"
-    );
+    const subjects = await Subject.find({
+      isArchived: false,
+      isPublished: true,
+    }).populate("assignedStudent", "email firstName lastName");
 
     if (!subjects || subjects.length === 0) {
       return res.status(404).json({ error: "No subjects found." });
     }
 
-    // Prepare notifications
-    const notifications = [];
+    // Group subjects by student
+    const studentMap = new Map();
 
     subjects.forEach((subject) => {
       subject.assignedStudent.forEach((student) => {
-        // Generate email content
-        const emailContent = generateEmailTemplate(
-          "Evaluation Form",
-          `<h2 style="color: #333;">Dear ${student.firstName} ${student.lastName},</h2>
-           <p>We kindly ask you to evaluate the subject <strong>${subject.title}</strong>.</p>`,
-          `<p>Please click on the link below to fill out the evaluation form:</p>
-           <div style="text-align: center; margin: 30px;">
-              <a href="https://evaluation-link.com/${subject._id}" target="_blank" style="
+        const studentId = student._id.toString();
+
+        // Check if student already evaluated this subject
+        const alreadyEvaluated = subject.evaluations.some((evaluation) =>
+          bcrypt.compareSync(studentId, evaluation.hashedStudentId)
+        );
+
+        if (!alreadyEvaluated) {
+          if (!studentMap.has(studentId)) {
+            studentMap.set(studentId, {
+              student,
+              subjects: [],
+            });
+          }
+          studentMap.get(studentId).subjects.push(subject);
+        }
+      });
+    });
+
+    const notifications = [];
+
+    for (const { student, subjects } of studentMap.values()) {
+      if (subjects.length === 0) continue; // Skip if no pending evaluations
+
+      const subjectCards = subjects
+        .map(
+          (subject) => `
+          <div style="
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+          ">
+            <h3 style="color: #0078FF; margin-bottom: 10px;">📘 ${subject.title}</h3>
+            <p style="margin: 0;">This subject requires your evaluation.</p>
+          </div>`
+        )
+        .join("");
+
+      const studentToken = student._id;
+      const evaluateLink = `https://evaluation-link.com/evaluate/${studentToken}`;
+
+      const emailContent = generateEmailTemplate(
+        "Evaluation Form",
+        `<h2 style="color: #333;">Dear ${student.firstName} ${student.lastName},</h2>
+         <p>Please take a moment to evaluate the following subjects:</p>`,
+        `${subjectCards}
+         <div style="text-align: center; margin-top: 30px;">
+            <a href="${evaluateLink}" target="_blank" style="
               display: inline-block;
               padding: 15px 40px;
               font-size: 16px;
@@ -511,24 +582,21 @@ export const sendEvaluationEmailsToStudent = async (req, res) => {
               border-radius: 5px;
               box-shadow: 0 4px 8px rgba(0, 120, 255, 0.3);
               font-weight: bold;">
-               Evaluate Now
-             </a>
-           </div>`
-        );
+              📝 Evaluate Now
+            </a>
+         </div>`
+      );
 
-        // Add to notifications array
-        notifications.push(
-          sendNotification({
-            email: student.email,
-            subject: `Evaluation Request for ${subject.title}`,
-            htmlContent: emailContent,
-            attachments: COMMON_ATTACHMENTS,
-          })
-        );
-      });
-    });
+      notifications.push(
+        sendNotification({
+          email: student.email,
+          subject: "Subject Evaluation Request",
+          htmlContent: emailContent,
+          attachments: COMMON_ATTACHMENTS,
+        })
+      );
+    }
 
-    // Execute all notifications
     await Promise.all(notifications);
 
     res.status(200).json({ message: "Evaluation emails sent successfully." });
@@ -539,6 +607,7 @@ export const sendEvaluationEmailsToStudent = async (req, res) => {
       .json({ error: "An error occurred while sending evaluation emails." });
   }
 };
+
 //update subject
 
 export const updateSubject = async (req, res) => {
@@ -568,6 +637,7 @@ export const updateSubject = async (req, res) => {
         error: "You cannot modify 'progress' or 'history' fields directly.",
       });
     }
+
     const previousState = {};
     for (const key of Object.keys(changes)) {
       if (subject[key] !== undefined) {
@@ -582,11 +652,29 @@ export const updateSubject = async (req, res) => {
       validated: true,
       date: new Date(),
     });
-    Object.keys(changes).forEach((key) => {
-      if (key !== "reason") {
+
+    for (const key of Object.keys(changes)) {
+      if (
+        key === "assignedStudent" &&
+        (!changes[key] || changes[key].length === 0)
+      ) {
+        const query = { level: Number(subject.level) };
+
+        if (Number(subject.level) === 2 || Number(subject.level) === 3) {
+          if (!subject.option) {
+            return res
+              .status(400)
+              .json({ error: "Option is required to auto-fill students." });
+          }
+          query.affectedOption = subject.option;
+        }
+
+        const students = await Student.find(query).select("_id");
+        subject.assignedStudent = students.map((s) => s._id);
+      } else if (key !== "reason") {
         subject[key] = changes[key];
       }
-    });
+    }
 
     await subject.save();
 
@@ -690,5 +778,58 @@ export const restoreSubject = async (req, res) => {
   } catch (error) {
     console.error("Restore error:", error);
     res.status(500).json({ message: "Failed to restore subject." });
+  }
+};
+
+export const getStudentsByLevelAndOption = async (req, res) => {
+  try {
+    const { level, option } = req.query;
+
+    if (!level) {
+      return res.status(400).json({ message: "Level is required." });
+    }
+
+    const query = { level: Number(level) };
+
+    if (Number(level) === 2 || Number(level) === 3) {
+      if (!option) {
+        return res
+          .status(400)
+          .json({ message: "Option is required for level 2 or 3." });
+      }
+      query.affectedOption = option;
+    }
+
+    const students = await Student.find(query).select(
+      "_id firstName lastName email"
+    );
+
+    res.status(200).json(students);
+  } catch (err) {
+    console.error("Error fetching students by level/option:", err);
+    res.status(500).json({ message: "Server error." });
+  }
+};
+
+////////////////// get subject by id /////////////////////////
+export const getSubjectById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const subject = await Subject.findById(id)
+      .populate("assignedTeacher", "firstName lastName email")
+      .populate("assignedStudent", "firstName lastName email")
+      .populate("propositions.submittedBy", "firstName lastName email");
+
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found." });
+    }
+
+    res.status(200).json({ subject });
+  } catch (error) {
+    console.error("Error fetching full subject:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching the subject." });
   }
 };

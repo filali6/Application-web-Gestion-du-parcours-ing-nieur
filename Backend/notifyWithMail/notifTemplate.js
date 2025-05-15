@@ -34,45 +34,45 @@ export const generateEmailTemplate = (title, headerContent, bodyContent) => `
   </div>
 `;
 
-// Email Template for Update Reminder
-export const updateReminderEmailTemplate = (teacher) => {
-  const subject = "Reminder to Update Your Progress";
+// // Email Template for Update Reminder
+// export const updateReminderEmailTemplate = (teacher) => {
+//   const subject = "Reminder to Update Your Progress";
 
-  const headerContent = `
-    <h2 style="font-size: 20px; color: #333; margin-bottom: 5px;">Dear <strong>Professor ${teacher.firstName} ${teacher.lastName}</strong>,</h2>
-    <p style="font-size: 16px; color: #666; margin: 0;">
-      This is a reminder to update your progress for the current semester.
-    </p>
-  `;
+//   const headerContent = `
+//     <h2 style="font-size: 20px; color: #333; margin-bottom: 5px;">Dear <strong>Professor ${teacher.firstName} ${teacher.lastName}</strong>,</h2>
+//     <p style="font-size: 16px; color: #666; margin: 0;">
+//       This is a reminder to update your progress for the current semester.
+//     </p>
+//   `;
 
-  const bodyContent = `
-    <p style="font-size: 16px;">
-      As a valued professor at our university, we kindly request you to log in to the system and update your teaching progress. Your updates help ensure everything runs smoothly and remains up to date for the benefit of our students.
-    </p>
-    <p style="font-size: 16px;">
-      Please make sure to complete your progress updates at your earliest convenience.
-    </p>
-    <div style="text-align: center; margin: 30px 0;">
-      <a href="/login" target="_blank" style="
-        display: inline-block;
-        padding: 15px 40px;
-        font-size: 16px;
-        color: white;
-        text-decoration: none;
-        background: linear-gradient(90deg, #0078FF, #4CAF50);
-        border-radius: 5px;
-        box-shadow: 0 4px 8px rgba(0, 120, 255, 0.3);
-        font-weight: bold;">
-        Update Now
-      </a>
-    </div>
-  `;
-  return {
-    subject,
-    htmlContent: generateEmailTemplate(subject, headerContent, bodyContent),
-    attachments: COMMON_ATTACHMENTS,
-  };
-};
+//   const bodyContent = `
+//     <p style="font-size: 16px;">
+//       As a valued professor at our university, we kindly request you to log in to the system and update your teaching progress. Your updates help ensure everything runs smoothly and remains up to date for the benefit of our students.
+//     </p>
+//     <p style="font-size: 16px;">
+//       Please make sure to complete your progress updates at your earliest convenience.
+//     </p>
+//     <div style="text-align: center; margin: 30px 0;">
+//       <a href="/login" target="_blank" style="
+//         display: inline-block;
+//         padding: 15px 40px;
+//         font-size: 16px;
+//         color: white;
+//         text-decoration: none;
+//         background: linear-gradient(90deg, #0078FF, #4CAF50);
+//         border-radius: 5px;
+//         box-shadow: 0 4px 8px rgba(0, 120, 255, 0.3);
+//         font-weight: bold;">
+//         Update Now
+//       </a>
+//     </div>
+//   `;
+//   return {
+//     subject,
+//     htmlContent: generateEmailTemplate(subject, headerContent, bodyContent),
+//     attachments: COMMON_ATTACHMENTS,
+//   };
+// };
 // Email Template for Late Submission Reminder
 export const lateSubmissionEmailTemplate = (student) => {
   const subject = "Reminder: Submit Your Summer Internship Report";
