@@ -155,17 +155,17 @@ const TopicStatus = () => {
     if (isValidated === true) {
       return (
         <Tag color="success" icon={<CheckCircleOutlined />}>
-          Validé
+          Passed
         </Tag>
       );
     } else if (isValidated === false) {
       return (
         <Tag color="error" icon={<CloseCircleOutlined />}>
-          Non validé
+          Not Passed
         </Tag>
       );
     } else {
-      return <Tag color="default">En attente</Tag>;
+      return <Tag color="default">Pending</Tag>;
     }
   };
   return (
@@ -176,7 +176,7 @@ const TopicStatus = () => {
         onClick={goBackToList}
         style={{ marginBottom: "16px" }}
       >
-        Retour à la liste des sujets
+        Back to Topics List
       </Button>
 
       {loading ? (
@@ -194,7 +194,7 @@ const TopicStatus = () => {
           </Title>
 
           {/* 3. Carte des informations de l'enseignant */}
-          <Divider orientation="left">Informations de l'enseignant</Divider>
+          <Divider orientation="left">Teacher Informations </Divider>
           <Card
             title={
               <Space>
@@ -208,7 +208,7 @@ const TopicStatus = () => {
                 <div>
                   <Space>
                     <UserOutlined />
-                    <Text strong>Nom:</Text>
+                    <Text strong>Name:</Text>
                   </Space>
                   <Text>{`${planDetails.teachers.firstName || ""} ${planDetails.teachers.lastName || ""}`}</Text>
                 </div>
@@ -224,7 +224,7 @@ const TopicStatus = () => {
                 )}
               </Space>
             ) : (
-              <Tag color="orange">Sujet pas encore affecté à un enseignant</Tag>
+              <Tag color="orange">Topic not yet assigned to a teacher</Tag>
             )}
           </Card>
 
@@ -233,7 +233,7 @@ const TopicStatus = () => {
           <Card
             title={
               <Space>
-                <FileOutlined /> Documents soumis
+                <FileOutlined /> Submitted Documents
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -261,11 +261,11 @@ const TopicStatus = () => {
           </Card>
 
           {/* 5. Carte des détails du rendez-vous */}
-          <Divider orientation="left">Détails du Rendez-vous</Divider>
+          <Divider orientation="left">Meeting details</Divider>
           <Card
             title={
               <Space>
-                <CalendarOutlined /> Rendez-vous de Soutenance
+                <CalendarOutlined /> Thesis Defense Appointment
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -283,7 +283,7 @@ const TopicStatus = () => {
                 <div>
                   <Space>
                     <ClockCircleOutlined />
-                    <Text strong>Heure:</Text>
+                    <Text strong>Hour:</Text>
                   </Space>
                   <Text>{planDetails.horaire}</Text>
                 </div>
@@ -292,7 +292,7 @@ const TopicStatus = () => {
                   <div>
                     <Space>
                       <VideoCameraOutlined />
-                      <Text strong>Lien Google Meet:</Text>
+                      <Text strong> Google Meet Link: </Text>
                     </Space>
                     <a
                       href={planDetails.googleMeetLink}
@@ -310,11 +310,11 @@ const TopicStatus = () => {
           </Card>
 
           {/* 6. Carte du rapport d'évaluation (PV) */}
-          <Divider orientation="left">Rapport d'Évaluation</Divider>
+          <Divider orientation="left">Evaluation Report </Divider>
           <Card
             title={
               <Space>
-                <FileTextOutlined /> PV Soutenance
+                <FileTextOutlined /> PV  
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -332,7 +332,7 @@ const TopicStatus = () => {
                 {pvDetails.isValidated === false && (
                   <div>
                     <Space>
-                      <Text strong>Commentaire:</Text>
+                      <Text strong>Comment:</Text>
                     </Space>
                     <Text>{pvDetails.reason || "Aucun commentaire"}</Text>
                   </div>

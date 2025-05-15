@@ -110,7 +110,7 @@ const TopicDetailsPage = () => {
         onClick={goBackToList}
         style={{ marginBottom: "16px" }}
       >
-        Retour à Mes Stages
+        Back to my Internship
       </Button>
 
       {loading ? (
@@ -123,12 +123,12 @@ const TopicDetailsPage = () => {
             {internshipDetails.sujetTitre}
           </Title>
 
-          <Divider orientation="left">Détails du Stage</Divider>
+          <Divider orientation="left">Internship Details</Divider>
 
           <Card
             title={
               <Space>
-                <UserOutlined /> Encadrant
+                <UserOutlined /> Supervisor
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -137,7 +137,7 @@ const TopicDetailsPage = () => {
               <div>
                 <Space>
                   <UserOutlined />
-                  <Text strong>Nom de l'encadrant:</Text>
+                  <Text strong> Supervisor Name:</Text>
                 </Space>
                 <Text> {internshipDetails.teacherName}</Text>
               </div>
@@ -152,12 +152,12 @@ const TopicDetailsPage = () => {
             </Space>
           </Card>
 
-          <Divider orientation="left">Détails du Rendez-vous</Divider>
+          <Divider orientation="left">Meeting details</Divider>
 
           <Card
             title={
               <Space>
-                <CalendarOutlined /> Rendez-vous de Soutenance
+                <CalendarOutlined /> Thesis Defense Appointment
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -175,7 +175,7 @@ const TopicDetailsPage = () => {
                 <div>
                   <Space>
                     <ClockCircleOutlined />
-                    <Text strong>Heure:</Text>
+                    <Text strong>Hour:</Text>
                   </Space>
                   <Text> {internshipDetails.horaire}</Text>
                 </div>
@@ -183,10 +183,10 @@ const TopicDetailsPage = () => {
                 <div>
                   <Space>
                     <VideoCameraOutlined />
-                    <Text strong>Lien Google Meet:</Text>
+                    <Text strong> Google Meet Link :</Text>
                   </Space>
                   {internshipDetails.googleMeetLink !==
-                  "Lien Google Meet non disponible" ? (
+                  "Google Meet Link Not available" ? (
                     <a
                       href={internshipDetails.googleMeetLink}
                       target="_blank"
@@ -195,7 +195,7 @@ const TopicDetailsPage = () => {
                       {internshipDetails.googleMeetLink}
                     </a>
                   ) : (
-                    <Text>Lien Google Meet non disponible</Text>
+                    <Text> Google Meet Link Not available</Text>
                   )}
                 </div>
               </Space>
@@ -207,12 +207,12 @@ const TopicDetailsPage = () => {
             )}
           </Card>
 
-          <Divider orientation="left">Rapport d'Évaluation</Divider>
+          <Divider orientation="left">Evaluation Repport </Divider>
 
           <Card
             title={
               <Space>
-                <FileTextOutlined /> PV Soutenance
+                <FileTextOutlined /> PV
               </Space>
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
@@ -229,7 +229,7 @@ const TopicDetailsPage = () => {
                 {pvDetails.isValidated === false && (
                   <div>
                     <Space>
-                      <Text strong>Commentaire:</Text>
+                      <Text strong>Comment:</Text>
                     </Space>
                     <Text>{pvDetails.reason || "Aucun commentaire"}</Text>
                   </div>

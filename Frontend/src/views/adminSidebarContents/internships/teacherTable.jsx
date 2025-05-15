@@ -252,7 +252,7 @@ const TeacherTable = () => {
               icon={<CalendarOutlined />}
               onClick={handleShowPlanning}
             >
-              Afficher les plannings
+              Show Planning
             </Button>
             <Button
               type="primary"
@@ -261,7 +261,7 @@ const TeacherTable = () => {
               disabled={selectedTeachers.length === 0}
                
             >
-              Assigner les enseignants
+              Assign Teachers
             </Button>
           </div>
         </>
@@ -269,7 +269,7 @@ const TeacherTable = () => {
         <>
           <Divider>
             <h3 style={{ margin: 0 }}>
-              <CalendarOutlined /> Liste des plannings
+              <CalendarOutlined /> Plannings List
             </h3>
           </Divider>
 
@@ -279,7 +279,7 @@ const TeacherTable = () => {
             </div>
           ) : plans.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px" }}>
-              Aucun planning trouvé.
+              No planning found.
             </div>
           ) : (
             <List
@@ -311,7 +311,7 @@ const TeacherTable = () => {
                           borderColor: "#faad14",
                         }}
                       >
-                        Modifier
+                        Update
                       </Button>,
                     ]}
                   >
@@ -331,14 +331,14 @@ const TeacherTable = () => {
                           <span style={{ marginLeft: "12px" }}>
                             {plan.isPublished ? (
                               <Tag color="green" icon={<EyeOutlined />}>
-                                Publié
+                                Published
                               </Tag>
                             ) : (
                               <Tag
                                 color="orange"
                                 icon={<EyeInvisibleOutlined />}
                               >
-                                Non publié
+                                Unpublished
                               </Tag>
                             )}
                           </span>
@@ -352,12 +352,12 @@ const TeacherTable = () => {
                         >
                           <div style={{ display: "flex", gap: "30px" }}>
                             <div>
-                              <UserOutlined /> <b>Enseignant:</b>{" "}
+                              <UserOutlined /> <b>Teacher:</b>{" "}
                               {plan.teachers?.firstName}{" "}
                               {plan.teachers?.lastName}
                             </div>
                             <div>
-                              <UserOutlined /> <b>Étudiant:</b>{" "}
+                              <UserOutlined /> <b>Student:</b>{" "}
                               {plan.sujet?.student?.firstName}{" "}
                               {plan.sujet?.student?.lastName}
                             </div>
@@ -409,21 +409,21 @@ const TeacherTable = () => {
                   }
                 >
                   {plans.every((p) => p.isPublished)
-                    ? "Masquer tout"
-                    : "Publier tout"}
+                    ? "Unpublish All"
+                    : "Publish All"}
                 </Button>
                 <Button
                   type="primary"
                   icon={<MailOutlined />}
                   onClick={toggleEmailPopup}
                 >
-                  Envoyer le planning
+                  Send Planning
                 </Button>
                 <Button
                   onClick={() => setShowPlans(false)}
                   icon={<TeamOutlined />}
                 >
-                  Retour aux enseignants
+                  Back to teachers
                 </Button>
               </Space>
             </div>

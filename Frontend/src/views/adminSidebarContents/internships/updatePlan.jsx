@@ -59,14 +59,14 @@ const UpdatePlanModal = ({ show, toggleShow, onSubmit, plan }) => {
       title={
         <span>
           <EditOutlined style={{ marginRight: 8 }} />
-          Modifier le planning - {plan?.sujet?.titre || "Sujet"}
+          Update Planning - {plan?.sujet?.titre || "Sujet"}
         </span>
       }
       open={show}
       onCancel={toggleShow}
       footer={[
         <Button key="cancel" onClick={toggleShow}>
-          Annuler
+          Cancel
         </Button>,
         <Button
           key="update"
@@ -75,7 +75,7 @@ const UpdatePlanModal = ({ show, toggleShow, onSubmit, plan }) => {
           onClick={handleSubmit}
           loading={loading}
         >
-          Mettre à jour
+          Update
         </Button>,
       ]}
     >
@@ -86,13 +86,13 @@ const UpdatePlanModal = ({ show, toggleShow, onSubmit, plan }) => {
       >
         <Form.Item
           name="teacherId"
-          label="Sélectionner un enseignant"
+          label="Select a teacher "
           rules={[
-            { required: true, message: "Veuillez sélectionner un enseignant" },
+            { required: true, message: "You must select a teacher" },
           ]}
         >
           <Select
-            placeholder="Choisir un enseignant"
+            placeholder="Choose Teacher"
             onChange={(value) => setSelectedTeacherId(value)}
             loading={loading}
             suffixIcon={<UserOutlined />}

@@ -54,14 +54,14 @@ const Consult = () => {
   // Définition des colonnes pour la table Ant Design
   const columns = [
     {
-      title: "Sujet",
+      title: "Topic",
       dataIndex: "titre",
       key: "titre",
       render: (text) => <a>{text}</a>,
       sorter: (a, b) => a.titre.localeCompare(b.titre),
     },
     {
-      title: "Nom de l'étudiant",
+      title: "Student Name",
       dataIndex: "student",
       key: "studentName",
       render: (student) => {
@@ -81,7 +81,7 @@ const Consult = () => {
       },
     },
     {
-      title: "Email de l'étudiant",
+      title: "Student E-mail",
       dataIndex: "student",
       key: "studentEmail",
       render: (student) => {
@@ -92,7 +92,7 @@ const Consult = () => {
       },
     },
     {
-      title: "Statut de soumission",
+      title: "Submission Status",
       key: "submissionStatus",
       render: (_, record) => {
         if (record.isLate === true) {
@@ -110,7 +110,7 @@ const Consult = () => {
         } else {
           return (
             <Tag icon={<ExclamationCircleOutlined />} color="default">
-              Non soumis
+              Not submitted
             </Tag>
           );
         }
@@ -133,7 +133,7 @@ const Consult = () => {
       },
     },
     {
-      title: "Suivi du sujet",
+      title: "Internship status progress",
       key: "followUp",
       align: "center",
       render: (_, record) => (
@@ -143,7 +143,7 @@ const Consult = () => {
           onClick={() => goToTopicDetails(record)}
           size="middle"
         >
-          Voir détails
+          see Details
         </Button>
       ),
     },
@@ -152,7 +152,7 @@ const Consult = () => {
   return (
     <div style={{ padding: "8px" }}>
       <Title level={3} style={{ marginBottom: "24px" }}>
-        Liste des Sujets de Stage
+        Internships Topics List
       </Title>
 
       {loading ? (

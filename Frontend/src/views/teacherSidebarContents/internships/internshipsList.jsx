@@ -64,10 +64,10 @@ const InternshipsList = () => {
       const [topicsData, plansData, pvData] = await Promise.all([
         fetchTeacherTopics(),
         getPlansDetails(),
-        getTeacherPVDetails(), // Remplace getFinalInternshipDetails()
+        getTeacherPVDetails(),
       ]);
 
-      // Afficher des exemples des données récupérées pour comprendre leur structure
+      // Afficher les données pour le débogage
       console.log("STRUCTURE ANALYSIS:");
       console.log(
         "Fetched Topics Data (first item):",
@@ -79,20 +79,33 @@ const InternshipsList = () => {
       );
       console.log("Fetched PV Data (all):", pvData);
 
-      // Créons une table de correspondance pour les PVs basée sur l'ID du sujet
+      // Préparation des PVs
       const pvBySujetId = {};
-
       pvData.forEach((pv) => {
         if (pv.sujetId) {
-          console.log(`Mapping PV for sujet ID: ${pv.sujetId}`, pv);
           pvBySujetId[pv.sujetId] = pv;
         }
       });
 
-      console.log("PVs by sujet ID:", pvBySujetId);
+      // Traitement des sujets
+      const topicsWithSchedule = [];
 
-      const topicsWithSchedule = topicsData.map((topic) => {
-        console.log("Processing topic:", topic);
+      for (const topic of topicsData) {
+        // Vérifions si le sujet est valide avant de le traiter
+        // Un sujet est considéré comme supprimé si:
+        // 1. Il n'a pas de titre
+        // 2. Son titre est "Non disponible" ou contient des termes indiquant une suppression
+        if (
+          !topic.sujetTitre ||
+          topic.sujetTitre.toLowerCase().includes("non disponible") ||
+          topic.sujetTitre.toLowerCase().includes("supprimé") ||
+          topic.sujetTitre.toLowerCase().includes("deleted")
+        ) {
+          console.log(`Topic skipped (appears to be deleted):`, topic);
+          continue; // Passer au sujet suivant
+        }
+
+        console.log("Processing valid topic:", topic);
 
         const matchingPlan = plansData.find(
           (plan) =>
@@ -102,26 +115,8 @@ const InternshipsList = () => {
             (plan.sujetId && plan.sujetId === topic.sujetId)
         );
 
-        // Vérifier si l'email de l'étudiant est défini
-        const studentEmail = topic.student?.email || topic.studentEmail;
-        const studentName = topic.student?.lastName || topic.studentName;
-
-        console.log(
-          `Looking for PV with student name: ${studentName} and sujet ID: ${topic._id || topic.sujetId}`
-        );
-
-        // Rechercher le PV correspondant en utilisant l'ID du sujet
         const topicId = topic._id || topic.sujetId;
         const matchingPV = pvBySujetId[topicId] || null;
-
-        if (matchingPV) {
-          console.log(
-            `Found matching PV for topic (${topic.sujetTitre}):`,
-            matchingPV
-          );
-        } else {
-          console.log(`No matching PV found for topic: ${topic.sujetTitre}`);
-        }
 
         const planningData = matchingPlan
           ? {
@@ -135,15 +130,8 @@ const InternshipsList = () => {
               googleMeetLink: "",
             };
 
-        // Récupérer les détails du PV
         let pvDetails = null;
-
         if (matchingPV) {
-          console.log(
-            `Final PV data found for topic ${topic.sujetTitre}:`,
-            matchingPV
-          );
-
           pvDetails = {
             isValidated:
               matchingPV.isValidated !== undefined
@@ -151,19 +139,20 @@ const InternshipsList = () => {
                 : null,
             reason: matchingPV.reason || "Non applicable",
           };
-        } else {
-          console.log(`No PV data found for topic ${topic.sujetTitre}`);
         }
 
-        return {
+        // Ajouter le sujet valide à notre tableau
+        topicsWithSchedule.push({
           ...topic,
           ...planningData,
-          // Stocker les détails du PV directement dans la propriété pv
           pv: pvDetails,
-        };
-      });
+        });
+      }
 
-      console.log("All topics with planning and PV:", topicsWithSchedule);
+      console.log(
+        "Final list of valid topics with planning and PV:",
+        topicsWithSchedule
+      );
       setAllTopics(topicsWithSchedule);
     } catch (err) {
       console.error("Erreur:", err);
@@ -296,12 +285,12 @@ const InternshipsList = () => {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <LinkOutlined /> Lien Google Meet
+                  <LinkOutlined /> Google Meet Link
                 </a>
               )}
             </>
           ) : (
-            <Tag color="orange">Non planifié</Tag>
+            <Tag color="orange">Not scheduled</Tag>
           )}
         </Space>
       ),
@@ -323,7 +312,7 @@ const InternshipsList = () => {
               </a>
             ))
           ) : (
-            <Tag>Aucun document</Tag>
+            <Tag>No document</Tag>
           )}
         </Space>
       ),
@@ -339,7 +328,7 @@ const InternshipsList = () => {
         console.log(`Rendering PV for ${record.sujetTitre}:`, pv);
 
         if (!pv) {
-          return <Tag color="default">Non disponible</Tag>;
+          return <Tag color="default">Not available</Tag>;
         }
 
         // Si pv est une chaîne de caractères
@@ -397,9 +386,9 @@ const InternshipsList = () => {
             icon={<EditOutlined />}
             onClick={() => openModal(record)}
           >
-            Planifier
+            Schedule
           </Button>
-          <Button onClick={() => handleOpenPvModal(record)}>Remplir PV</Button>
+          <Button onClick={() => handleOpenPvModal(record)}>Fill out PV</Button>
         </Space>
       ),
     },
@@ -467,8 +456,8 @@ const InternshipsList = () => {
               value={isValidated}
               onChange={(e) => setIsValidated(e.target.value)}
             >
-              <Radio value={true}>Validé</Radio>
-              <Radio value={false}>Non validé</Radio>
+              <Radio value={true}>Passed</Radio>
+              <Radio value={false}>Not Passed</Radio>
             </Radio.Group>
           </Form.Item>
 

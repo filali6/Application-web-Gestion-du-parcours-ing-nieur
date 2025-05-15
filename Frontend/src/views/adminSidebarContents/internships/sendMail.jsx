@@ -26,14 +26,14 @@ const SendMailModal = ({ show, toggleShow }) => {
     <Modal
       title={
         <span>
-          <MailOutlined style={{ marginRight: 8 }} /> Choisir le type d'envoi
+          <MailOutlined style={{ marginRight: 8 }} /> Choose send type
         </span>
       }
       open={show}
       onCancel={toggleShow}
       footer={[
         <Button key="cancel" onClick={toggleShow}>
-          Annuler
+          Cancel
         </Button>,
         <Button
           key="send"
@@ -41,7 +41,7 @@ const SendMailModal = ({ show, toggleShow }) => {
           icon={<SendOutlined />}
           onClick={handleSubmit}
         >
-          Envoyer
+          Send
         </Button>,
       ]}
     >
@@ -63,7 +63,7 @@ const SendMailModal = ({ show, toggleShow }) => {
                 justifyContent: "center",
               }}
             >
-              Premier envoi
+              First send
             </Radio.Button>
             <Radio.Button
               value="modified"
@@ -76,7 +76,7 @@ const SendMailModal = ({ show, toggleShow }) => {
                 justifyContent: "center",
               }}
             >
-              Envoi apres modification 
+              Send After Update 
             </Radio.Button>
           </Radio.Group>
         </Form.Item>
