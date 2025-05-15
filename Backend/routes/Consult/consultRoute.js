@@ -14,7 +14,7 @@ import {
   isTeacher,
 } from "../../middlewares/roleMiddlewares.js";
 import { updateSoutenance } from "../../controllers/planSoutInternship.js";
-import { fillPV, getStudentPVDetails, getTeacherPVDetails } from "../../controllers/pvController.js";
+import { fillPV, getPV, getStudentPVDetails, getTeacherPVDetails } from "../../controllers/pvController.js";
 import { yearFilter } from "../../middlewares/year.js";
 
 const router = express.Router();
@@ -31,6 +31,8 @@ router.get(
 router.get("/me/:id", loggedMiddleware, isStudent, getStudentInternshipDetails);
 router.get("/pv", loggedMiddleware, isStudent, getStudentPVDetails);
 router.get("/pv/teacher",loggedMiddleware,isTeacher,getTeacherPVDetails);
+router.get("/pv/admin", loggedMiddleware, isAdmin, getPV);
+
 router.patch("/:id", loggedMiddleware, isTeacher, updateSoutenance);
 router.patch("/type/:id", loggedMiddleware, isTeacher, fillPV);
 

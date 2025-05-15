@@ -109,6 +109,10 @@ const routes = [
         ),
       },
       {
+        path: "/internships/topic-status",
+        element: lazy(() => import("./views/adminSidebarContents/internships/topicStatus")),
+      },
+      {
         path: "/periode/manage-periode",
         element: lazy(
           () => import("./views/adminSidebarContents/periode/ManagePeriode")

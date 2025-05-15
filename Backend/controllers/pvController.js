@@ -162,4 +162,35 @@ export const getTeacherPVDetails = async (req, res) => {
     });
   }
 };
+export const getPV = async (req, res) => {
+  try {
+    // Récupérer tous les PV avec les infos du sujet associé
+    const pvs = await PV.find().populate("sujet", "titre");
+
+    if (!pvs || pvs.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Aucun PV trouvé dans la base de données." });
+    }
+
+    // Préparer la réponse
+    const pvDetails = pvs.map((pv) => ({
+      sujetId: pv.sujet?._id || null,
+      sujetTitre: pv.sujet?.titre || "Titre inconnu",
+      isValidated: pv.isValidated,
+      reason: pv.reason || "Non applicable",
+    }));
+
+    res.status(200).json({
+      message: "Liste de tous les PV.",
+      pvDetails,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de la récupération des PV.",
+      error: error.message,
+    });
+  }
+};
 

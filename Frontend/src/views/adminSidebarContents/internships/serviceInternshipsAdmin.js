@@ -197,3 +197,53 @@ export const sendPlanningEmails = async (sendType) => {
     };
   }
 };
+export const getTopics = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    // Utilisation de axios.get pour récupérer les sujets
+    const response = await axios.get(
+      `http://localhost:5000/internship/post/topics/drop`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+
+    const topics = response.data.topics;
+
+    // Vérifier si aucun sujet n'a été trouvé
+    if (!topics || topics.length === 0) {
+      // Retourner un message indiquant qu'aucun sujet n'est disponible
+      return { topics: [], message: "Aucun sujet trouvé pour le moment." };
+    }
+
+    return response.data; // Retourner les données des sujets
+  } catch (error) {
+    console.error("Erreur lors de la récupération des sujets:", error);
+    // Si une erreur se produit, renvoyer un message d'erreur
+    return {
+      topics: [],
+      message: "Une erreur est survenue lors du chargement des sujets.",
+    };
+  }
+};
+export const getAllPV = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.get(
+      `http://localhost:5000/internship/pv/admin`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data; // { message, pvDetails }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
+    throw error.response?.data || { message: "Erreur inconnue" };
+  }
+};

@@ -60,7 +60,7 @@ export const getPlans = async (req, res) => {
       })
       .populate({
         path: "teachers", // Peupler le champ 'teachers'
-        select: "firstName lastName", // Sélectionner les prénoms et noms du professeur
+        select: "firstName lastName email", // Sélectionner les prénoms et noms du professeur
       });
     if (!plans || plans.length === 0) {
       return res.status(404).json({ error: "No plans found." });

@@ -1,5 +1,29 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Card, Form } from "react-bootstrap";
+import {
+  Table,
+  Button,
+  Card,
+  Space,
+  Spin,
+  Checkbox,
+  message,
+  Divider,
+  List,
+  Tag,
+  Avatar,
+} from "antd";
+import {
+  TeamOutlined,
+  CalendarOutlined,
+  EditOutlined,
+  MailOutlined,
+  CheckCircleOutlined,
+  EyeInvisibleOutlined,
+  EyeOutlined,
+  ClockCircleOutlined,
+  UserOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons";
 import {
   assignTeachersToTopics,
   fetchTeachers,
@@ -30,6 +54,7 @@ const TeacherTable = () => {
         setTeachers(data);
       } catch (err) {
         setError("Erreur lors du chargement des enseignants.");
+        message.error("Erreur lors du chargement des enseignants.");
       } finally {
         setLoading(false);
       }
@@ -42,10 +67,15 @@ const TeacherTable = () => {
     setLoadingPlans(true);
     try {
       const result = await getPlans();
-      setPlans(result.plans);
+      // Filtrer les plannings qui ont des sujets valides
+      const validPlans = result.plans.filter(
+        (plan) => plan.sujet && (plan.sujet._id || plan.sujet.titre)
+      );
+      setPlans(validPlans);
       setShowPlans(true);
     } catch (err) {
       setError("Erreur lors de la récupération des plannings.");
+      message.error("Erreur lors de la récupération des plannings.");
     } finally {
       setLoadingPlans(false);
     }
@@ -59,8 +89,15 @@ const TeacherTable = () => {
       setPlans((prevPlans) =>
         prevPlans.map((plan) => ({ ...plan, isPublished: shouldPublish }))
       );
+
+      message.success(
+        shouldPublish
+          ? "Tous les plannings ont été publiés avec succès."
+          : "Tous les plannings ont été masqués avec succès."
+      );
     } catch (err) {
       setError("Erreur lors de la modification globale des visibilités.");
+      message.error("Erreur lors de la modification globale des visibilités.");
     }
   };
 
@@ -76,9 +113,10 @@ const TeacherTable = () => {
     try {
       await assignTeachersToTopics(selectedTeachers);
       setSelectedTeachers([]);
-      alert("Enseignants affectés avec succès !");
+      message.success("Enseignants affectés avec succès !");
     } catch (err) {
       setError("Erreur lors de l'affectation des enseignants.");
+      message.error("Erreur lors de l'affectation des enseignants.");
     }
   };
 
@@ -106,6 +144,7 @@ const TeacherTable = () => {
       setPlans(data.plans); // Mise à jour de l'état avec les nouveaux plans
     } catch (error) {
       console.error("Erreur lors de la récupération des plannings:", error);
+      message.error("Erreur lors de la récupération des plannings.");
     }
   };
 
@@ -114,142 +153,285 @@ const TeacherTable = () => {
       await updateTeacherForPlan(planId, newTeacherId, internshipId);
       await fetchAndUpdatePlans(); // 🔄 Met à jour la liste après modif
       setShowPopup(false);
+      message.success("Enseignant mis à jour avec succès !");
     } catch (err) {
       console.error("Erreur lors de la mise à jour de l'enseignant.", err);
       setError("Erreur lors de la mise à jour de l'enseignant.");
+      message.error("Erreur lors de la mise à jour de l'enseignant.");
     }
   };
 
+  // Configuration des colonnes pour la table Ant Design
+  const columns = [
+    {
+      title: "Prénom",
+      dataIndex: "firstName",
+      key: "firstName",
+      sorter: (a, b) => a.firstName.localeCompare(b.firstName),
+    },
+    {
+      title: "Nom",
+      dataIndex: "lastName",
+      key: "lastName",
+      sorter: (a, b) => a.lastName.localeCompare(b.lastName),
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+    },
+    {
+      title: "Grade",
+      dataIndex: "grade",
+      key: "grade",
+      filters: [...new Set(teachers.map((teacher) => teacher.grade))].map(
+        (grade) => ({ text: grade, value: grade })
+      ),
+      onFilter: (value, record) => record.grade === value,
+    },
+    {
+      title: "CIN",
+      dataIndex: "cin",
+      key: "cin",
+      render: (text) => text || "N/A",
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedTeachers.includes(record._id)}
+          onChange={() => handleCheckboxChange(record._id)}
+        >
+          Assigner
+        </Checkbox>
+      ),
+    },
+  ];
+
   return (
-    <div className="teacher-table-container">
-      <h2 className="text-center mb-4">Teachers List</h2>
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      <h2 style={{ marginBottom: "24px", textAlign: "center" }}>
+        <TeamOutlined /> Liste des enseignants
+      </h2>
 
       {loading ? (
-        <p>Loading Teachers...</p>
+        <div style={{ textAlign: "center", padding: "40px" }}>
+          <Spin size="large" />
+        </div>
       ) : error ? (
-        <p className="text-danger">{error}</p>
+        <div style={{ color: "red", textAlign: "center" }}>{error}</div>
       ) : teachers.length === 0 ? (
-        <p>Aucun enseignant trouvé.</p>
+        <div style={{ textAlign: "center" }}>Aucun enseignant trouvé.</div>
       ) : !showPlans ? (
         <>
           <Table
-            striped
-            hover
-            responsive
+            columns={columns}
+            dataSource={teachers.map((teacher) => ({
+              ...teacher,
+              key: teacher._id,
+            }))}
+            pagination={{ pageSize: 10 }}
+            bordered
             style={{
-              borderCollapse: "collapse",
+              marginBottom: "24px",
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
             }}
-          >
-            <thead>
-              <tr>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Email</th>
-                <th>Grade</th>
-                <th>CIN</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teachers.map((teacher) => (
-                <tr key={teacher._id}>
-                  <td>{teacher.firstName}</td>
-                  <td>{teacher.lastName}</td>
-                  <td>{teacher.email}</td>
-                  <td>{teacher.grade}</td>
-                  <td>{teacher.cin || "N/A"}</td>
-                  <td>
-                    <Form.Check
-                      type="checkbox"
-                      id={`teacher-${teacher._id}`}
-                      label="Assign"
-                      checked={selectedTeachers.includes(teacher._id)}
-                      onChange={() => handleCheckboxChange(teacher._id)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
+          />
 
-          <div className="d-flex justify-content-center gap-3 mt-4">
-            <Button variant="primary" size="sm" onClick={handleShowPlanning}>
-              Show Planning
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "16px",
+              marginTop: "24px",
+            }}
+          >
+            <Button
+              type="primary"
+              icon={<CalendarOutlined />}
+              onClick={handleShowPlanning}
+            >
+              Afficher les plannings
             </Button>
-            <Button variant="success" size="sm" onClick={handleAssignTeachers}>
-              Assign Teacher
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={handleAssignTeachers}
+              disabled={selectedTeachers.length === 0}
+               
+            >
+              Assigner les enseignants
             </Button>
           </div>
         </>
       ) : (
         <>
-          <h3 className="text-center mb-4">Liste des Plannings</h3>
+          <Divider>
+            <h3 style={{ margin: 0 }}>
+              <CalendarOutlined /> Liste des plannings
+            </h3>
+          </Divider>
+
           {loadingPlans ? (
-            <p>Loading plannings...</p>
-          ) : (
-            <div className="d-flex flex-wrap justify-content-center">
-              {plans.length === 0 ? (
-                <p>No planning found.</p>
-              ) : (
-                plans.map((plan) => (
-                  <Card
-                    style={{ width: "18rem" }}
-                    key={plan._id}
-                    className="m-3 shadow-sm"
-                  >
-                    <Card.Body>
-                      <Card.Title>
-                        {plan.sujet.titre || "Sujet Inconnu"}
-                      </Card.Title>
-                      <Card.Text>
-                        Teacher : {plan.teachers?.firstName}{" "}
-                        {plan.teachers?.lastName}
-                      </Card.Text>
-                      <Card.Text>
-                        Student : {plan.sujet?.student?.firstName}{" "}
-                        {plan.sujet?.student?.lastName}
-                      </Card.Text>
-                      <Button
-                        variant="warning"
-                        size="sm"
-                        className="ms-2"
-                        onClick={() => handleOpenUpdateModal(plan)}
-                      >
-                        Update
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                ))
-              )}
+            <div style={{ textAlign: "center", padding: "40px" }}>
+              <Spin size="large" />
             </div>
+          ) : plans.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px" }}>
+              Aucun planning trouvé.
+            </div>
+          ) : (
+            <List
+              itemLayout="horizontal"
+              dataSource={plans}
+              style={{
+                background: "white",
+                padding: "16px",
+                borderRadius: "8px",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.09)",
+                marginBottom: "24px",
+              }}
+              pagination={{ pageSize: 5 }}
+              renderItem={(plan) => {
+                if (!plan.sujet || (!plan.sujet._id && !plan.sujet.titre)) {
+                  return null; // Ne pas rendre cet élément
+                }
+                return (
+                  <List.Item
+                    key={plan._id}
+                    actions={[
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<EditOutlined />}
+                        onClick={() => handleOpenUpdateModal(plan)}
+                        style={{
+                          backgroundColor: "#faad14",
+                          borderColor: "#faad14",
+                        }}
+                      >
+                        Modifier
+                      </Button>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <FileTextOutlined
+                          style={{
+                            fontSize: "32px",
+                            color: "#8B94A3",
+                            margin: "8px",
+                          }}
+                        />
+                      }
+                      title={
+                        <div style={{ fontWeight: "bold", fontSize: "16px" }}>
+                          {plan.sujet.titre || "Sujet Inconnu"}
+                          <span style={{ marginLeft: "12px" }}>
+                            {plan.isPublished ? (
+                              <Tag color="green" icon={<EyeOutlined />}>
+                                Publié
+                              </Tag>
+                            ) : (
+                              <Tag
+                                color="orange"
+                                icon={<EyeInvisibleOutlined />}
+                              >
+                                Non publié
+                              </Tag>
+                            )}
+                          </span>
+                        </div>
+                      }
+                      description={
+                        <Space
+                          style={{ width: "100%" }}
+                          direction="vertical"
+                          size="small"
+                        >
+                          <div style={{ display: "flex", gap: "30px" }}>
+                            <div>
+                              <UserOutlined /> <b>Enseignant:</b>{" "}
+                              {plan.teachers?.firstName}{" "}
+                              {plan.teachers?.lastName}
+                            </div>
+                            <div>
+                              <UserOutlined /> <b>Étudiant:</b>{" "}
+                              {plan.sujet?.student?.firstName}{" "}
+                              {plan.sujet?.student?.lastName}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "30px" }}>
+                            {plan.date && (
+                              <div>
+                                <CalendarOutlined /> <b>Date:</b>{" "}
+                                {new Date(plan.date).toLocaleDateString(
+                                  "fr-FR"
+                                )}
+                              </div>
+                            )}
+                            {plan.horaire && (
+                              <div>
+                                <ClockCircleOutlined /> <b>Heure:</b>{" "}
+                                {plan.horaire}
+                              </div>
+                            )}
+                          </div>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                );
+              }}
+            />
           )}
 
           {plans.length > 0 && (
-            <div className="text-center mt-4">
-              <Button
-                variant={
-                  plans.every((p) => p.isPublished) ? "danger" : "success"
-                }
-                size="sm"
-                onClick={handleToggleAllVisibility}
-              >
-                {plans.every((p) => p.isPublished) ? "Hide" : "Publish"}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                className="ms-2"
-                onClick={toggleEmailPopup}
-              >
-                Send Planning
-              </Button>
+            <div style={{ textAlign: "center", marginTop: "20px" }}>
+              <Space size="middle">
+                <Button
+                  type={
+                    plans.every((p) => p.isPublished) ? "danger" : "primary"
+                  }
+                  icon={
+                    plans.every((p) => p.isPublished) ? (
+                      <EyeInvisibleOutlined />
+                    ) : (
+                      <EyeOutlined />
+                    )
+                  }
+                  onClick={handleToggleAllVisibility}
+                  style={
+                    plans.every((p) => p.isPublished)
+                      ? { backgroundColor: "#f5222d", borderColor: "#f5222d" } // Rouge pour masquer
+                      : { backgroundColor: "#13c2c2", borderColor: "#13c2c2" } // Turquoise pour publier
+                  }
+                >
+                  {plans.every((p) => p.isPublished)
+                    ? "Masquer tout"
+                    : "Publier tout"}
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<MailOutlined />}
+                  onClick={toggleEmailPopup}
+                >
+                  Envoyer le planning
+                </Button>
+                <Button
+                  onClick={() => setShowPlans(false)}
+                  icon={<TeamOutlined />}
+                >
+                  Retour aux enseignants
+                </Button>
+              </Space>
             </div>
           )}
         </>
       )}
 
-      {/* ✅ Le popup s'affiche ici */}
+      {/* Les modals sont conservés tels quels */}
       {showPopup && selectedPlan && (
         <UpdatePlanModal
           show={showPopup}
