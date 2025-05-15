@@ -1,41 +1,40 @@
 .button-component {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 20px 12px;
-    border: none;
-    border-radius: 4px; 
-    font-size: 14px; 
-    font-weight: 500;
-    color: white;
-    cursor: pointer;
-    transition: 0.3s ease-in-out;
-    min-width: 100px;
-    height: 32px; 
-    margin-bottom: 20px;
-   
-  
-    &.green {
-      background-color: #31a84dc5; 
-    }
-  
-    &.blue {
-      background-color: #04a9f5; 
-     
-    }
-  
-    &:hover {
-      opacity: 0.85;
-    }
-  
-    .icon {
-      font-size: 16px;
-    }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px; // Réduit le padding pour mieux s'adapter à la hauteur
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  cursor: pointer;
+  transition: 0.3s ease-in-out;
+  min-width: 100px;
+  height: 40px;
+  margin-bottom: 20px;
+
+  &.green {
+    background-color: #31a84dc5;
   }
-  .buttons-container {
-    display: flex;
-    gap: 12px;
-    margin-top: 12px;
-  }  
-  
+
+  &.blue {
+    background-color: #04a9f5;
+  }
+
+  &:hover {
+    opacity: 0.85;
+  }
+
+  .icon {
+    font-size: 16px;
+    color: white !important; // Force la couleur blanche
+  }
+}
+
+.buttons-container {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}

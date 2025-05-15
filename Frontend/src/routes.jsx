@@ -223,6 +223,10 @@ const routes = [
         exact: "true",
         element: () => <Navigate to={BASE_URL} />,
       },
+      {
+        path: "/students/:studentId/cv",
+        element: lazy(() => import("./components/StudentCV/StudentCV")),
+      },
     ],
   },
 ];

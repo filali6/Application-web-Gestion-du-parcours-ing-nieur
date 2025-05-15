@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback } from "react";
 import Button from "components/button/Button";
 import { MdAddCircleOutline, MdOutlineInsertDriveFile } from "react-icons/md";
+import { FiFileText } from "react-icons/fi";
 import {
   importStudents,
   fetchStudents,
@@ -42,7 +43,6 @@ const ManageStudents = () => {
     try {
       const result = await importStudents(file, token);
 
-      // Cas où il y a à la fois des erreurs et des imports réussis
       if (result?.errors?.length > 0 && result?.imported > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
@@ -62,9 +62,7 @@ const ManageStudents = () => {
           icon: "warning",
         });
         setReloadTrigger(Date.now());
-      }
-      // Cas où il y a seulement des erreurs
-      else if (result?.errors?.length > 0) {
+      } else if (result?.errors?.length > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
           .join("\n");
@@ -74,9 +72,7 @@ const ManageStudents = () => {
           text: errorMessages,
           icon: "error",
         });
-      }
-      // Cas où tout a réussi
-      else if (result?.imported > 0) {
+      } else if (result?.imported > 0) {
         await Swal.fire(
           "Success",
           `Successfully imported ${result.imported} student(s).`,
@@ -225,7 +221,6 @@ const ManageStudents = () => {
           Swal.fire("Error", "An unexpected error occurred.", "error");
         }
         break;
-
       default:
         console.warn("Unknown action:", action);
     }
@@ -260,7 +255,6 @@ const ManageStudents = () => {
         />
       </div>
 
-      {/* Formulaire de modification d'étudiant */}
       {showForm && currentStudent && (
         <StudentUpdateForm
           student={currentStudent}
@@ -275,7 +269,6 @@ const ManageStudents = () => {
         />
       )}
 
-      {/* Formulaire d'ajout d'étudiant */}
       {showForm && !currentStudent && (
         <StudentForm
           onSuccess={() => {
@@ -286,7 +279,6 @@ const ManageStudents = () => {
         />
       )}
 
-      {/* Formulaire de changement de mot de passe */}
       {showPasswordForm && currentStudent && (
         <PasswordForm
           studentId={currentStudent._id}
@@ -309,18 +301,38 @@ const ManageStudents = () => {
       <GenericList
         title="Students list"
         fetchItems={stableFetchStudents}
-        reloadKey={reloadTrigger} // Ceci déclenchera le rechargement quand reloadTrigger change
+        reloadKey={reloadTrigger}
         columns={[
           { key: "cin", header: "CIN" },
           { key: "firstName", header: "First Name" },
           { key: "lastName", header: "Last Name" },
           { key: "email", header: "Email" },
           { key: "level", header: "Level" },
+          {
+            key: "cv",
+            header: "CV",
+            style: { textAlign: "center", width: "80px" },
+          },
           { key: "actions", header: "Actions" },
         ]}
         customRenderers={{
+          cv: (student) => (
+            <td key={`cv-${student._id}`} className="text-center">
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={() =>
+                  window.open(`/students/${student._id}/cv`, "_blank")
+                }
+                title="View CV"
+              >
+                <FiFileText />
+              </button>
+            </td>
+          ),
           actions: (student) => (
-            <ManageIcons student={student} onAction={handleActionClick} />
+            <td key={`actions-${student._id}`}>
+              <ManageIcons student={student} onAction={handleActionClick} />
+            </td>
           ),
         }}
         searchFields={["cin", "firstName", "lastName", "email"]}
@@ -328,5 +340,4 @@ const ManageStudents = () => {
     </div>
   );
 };
-
 export default ManageStudents;
