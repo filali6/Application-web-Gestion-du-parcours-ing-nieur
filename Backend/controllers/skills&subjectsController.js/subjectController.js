@@ -180,11 +180,11 @@ export const updateSubjectProgress = async (req, res) => {
       });
     }
 
-    if (!subject.assignedStudent || subject.assignedStudent.length === 0) {
-      return res.status(400).json({
-        error: `The subject "${subject.title}" does not have any assigned students.`,
-      });
-    }
+    // if (!subject.assignedStudent || subject.assignedStudent.length === 0) {
+    //   return res.status(400).json({
+    //     error: `The subject "${subject.title}" does not have any assigned students.`,
+    //   });
+    // }
 
     if (!Array.isArray(completedSections) || completedSections.length === 0) {
       return res.status(400).json({
