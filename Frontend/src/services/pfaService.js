@@ -73,3 +73,69 @@ export const rejectPfa = async (id) => {
     }
   );
 };
+
+//7.1
+export const fetchChoicesByStudent = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.get(
+    `${API_URL}/PFA/assign/getchoicesbyStudent`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return response.data;
+};
+//7.2
+export const autoAssignPFAs = async (pfaIds) => {
+  const token = localStorage.getItem("token");
+  const response = await axios.patch(
+    `${API_URL}/PFA/assign/autoassign`,
+    { pfaIds },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+  return response.data;
+};
+//7.3
+export const assignPfaManually = async (pfaId, studentId, force = true) => {
+  const token = localStorage.getItem("token");
+  return axios.patch(
+    `${API_URL}/PFA/${pfaId}/assign/student/${studentId}`,
+    { force },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+};
+
+//7.4
+export const toggleAffectationStatus = async (response) => {
+  const token = localStorage.getItem("token");
+  return axios.post(
+    `${API_URL}/PFA/publishAll/${response}`,
+    {},
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+};
+
+//7.5
+
+export const sendPfaValidationLink = async (link, emailType) => {
+  const token = localStorage.getItem("token");
+  return axios.post(
+    `${API_URL}/PFA/list/send`,
+    { Link: link, emailType },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+};

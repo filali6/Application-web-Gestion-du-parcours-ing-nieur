@@ -179,6 +179,9 @@ const ManagePFA = () => {
           <Button variant="success" onClick={handleSendEmail}>
             Envoyer Email
           </Button>
+          <Button variant="info" onClick={() => navigate("/pfa/validate-pfa")}>
+            Valider PFAs
+          </Button>
         </div>
       </div>
 
