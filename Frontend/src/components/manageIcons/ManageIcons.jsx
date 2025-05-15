@@ -4,7 +4,7 @@ import "./ManageIcons.scss";
 
 const ManageIcons = ({ student, onAction }) => {
   return (
-    <div className="manage-icons">
+    <>
       <MdInfo
         key="info-icon"
         className="icon info"
@@ -25,7 +25,7 @@ const ManageIcons = ({ student, onAction }) => {
         className="icon delete"
         onClick={() => onAction("delete", student)}
       />
-    </div>
+    </>
   );
 };
 

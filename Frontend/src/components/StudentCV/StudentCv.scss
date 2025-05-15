@@ -1,0 +1,68 @@
+.cv-container {
+  max-width: 900px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+  .cv-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+
+    h1 {
+      margin: 0;
+      color: #333;
+      font-size: 2rem;
+    }
+  }
+
+  .cv-section {
+    margin-bottom: 2rem;
+
+    h3 {
+      color: #444;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #eee;
+    }
+
+    .items-list {
+      list-style: none;
+      padding: 0;
+
+      .item {
+        padding: 0.5rem 0;
+        border-bottom: 1px dashed #eee;
+      }
+    }
+
+    .no-items {
+      color: #999;
+      font-style: italic;
+    }
+  }
+
+  .project-details {
+    background: #f9f9f9;
+    padding: 1rem;
+    border-radius: 4px;
+
+    p {
+      margin: 0.5rem 0;
+    }
+  }
+}
+
+.error {
+  color: #dc3545;
+  text-align: center;
+  padding: 2rem;
+}
+
+.not-found {
+  color: #6c757d;
+  text-align: center;
+  padding: 2rem;
+}
