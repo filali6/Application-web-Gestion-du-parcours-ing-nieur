@@ -15,9 +15,11 @@ import Swal from "sweetalert2"; // Import SweetAlert
 import {
   addProposition,
   fetchSubjectById,
+  updateSubjectProgress,
 } from "../../../services/subjects.service";
 
 const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
+  const [subjectData, setSubjectData] = useState(subject || {});
   const [propositions, setPropositions] = useState(subject.propositions || []);
   const [newProp, setNewProp] = useState({
     date: new Date().toISOString(),
@@ -36,8 +38,145 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
   const [sectionText, setSectionText] = useState("");
 
   useEffect(() => {
+    setSubjectData(subject);
     setPropositions(subject.propositions || []);
   }, [subject]);
+
+  const calculateCompletionPercentage = () => {
+    if (!subjectData.progress || !subjectData.curriculum.chapters) return 0;
+
+    // Count all possible items that can be completed
+    let totalItems = 0;
+    subjectData.curriculum.chapters.forEach((chapter) => {
+      // If the chapter has sections, count each section
+      if (chapter.sections && chapter.sections.length > 0) {
+        totalItems += chapter.sections.length;
+      } else {
+        // If the chapter has no sections, count the chapter itself
+        totalItems += 1;
+      }
+      // Also count the chapter itself as a separate item to complete
+      totalItems += 1;
+    });
+
+    if (totalItems === 0) return 0;
+
+    // Count legitimately completed items, avoiding double counting
+    let completedItems = 0;
+    const progress = subjectData.progress || [];
+
+    // Process each completed item in the progress array
+    subjectData.curriculum.chapters.forEach((chapter) => {
+      // Check if the chapter itself is completed
+      const isChapterCompleted = progress.some(
+        (p) => p.title === chapter.title && !p.title.includes("-")
+      );
+
+      if (isChapterCompleted) {
+        completedItems += 1;
+      }
+
+      // Check each section's completion status
+      if (chapter.sections) {
+        chapter.sections.forEach((section) => {
+          const isSectionCompleted = progress.some(
+            (p) => p.title === `${chapter.title} - ${section}`
+          );
+
+          if (isSectionCompleted) {
+            completedItems += 1;
+          }
+        });
+      }
+    });
+
+    // Ensure we don't exceed 100%
+    const percentage = Math.round((completedItems / totalItems) * 100);
+    return Math.min(percentage, 100); // Cap at 100%
+  };
+
+  const markAsCompleted = async (chapterTitle, sectionText = null) => {
+    try {
+      const today = new Date().toISOString();
+      const itemTitle = sectionText
+        ? `${chapterTitle} - ${sectionText}`
+        : chapterTitle;
+
+      // Vérifier si l'élément est déjà complété
+      const isAlreadyCompleted = subjectData.progress?.some(
+        (p) => p.title === itemTitle
+      );
+
+      if (isAlreadyCompleted) {
+        await Swal.fire({
+          icon: "info",
+          title: "Already Completed",
+          text: "This item is already marked as completed.",
+          confirmButtonColor: "#3085d6",
+        });
+        return;
+      }
+
+      const completedItem = {
+        title: itemTitle,
+        completedDate: today,
+      };
+
+      const result = await Swal.fire({
+        title: "Mark as completed?",
+        html: `
+        <p>Are you sure you want to mark <strong>"${itemTitle}"</strong> as completed?</p>
+        <div class="form-group mt-3">
+          <label for="completion-date">Completion Date:</label>
+          <input type="date" id="completion-date" class="form-control" value="${today.split("T")[0]}" />
+        </div>
+      `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Confirm",
+        cancelButtonText: "Cancel",
+        focusConfirm: false,
+        preConfirm: () => {
+          const dateInput = document.getElementById("completion-date").value;
+          return {
+            date: dateInput || today.split("T")[0],
+          };
+        },
+      });
+
+      if (result.isConfirmed) {
+        // Mettre à jour la date avec celle sélectionnée par l'utilisateur
+        completedItem.completedDate = new Date(result.value.date).toISOString();
+
+        // Appeler le service pour mettre à jour la progression
+        await updateSubjectProgress(subjectData._id, [completedItem]);
+
+        // Mettre à jour l'état local
+        setSubjectData((prev) => ({
+          ...prev,
+          progress: [...(prev.progress || []), completedItem],
+        }));
+
+        Swal.fire({
+          position: "top-end",
+          icon: "success",
+          title: "Marked as completed!",
+          showConfirmButton: false,
+          timer: 1500,
+          toast: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text:
+          "Failed to update progress: " +
+          (error.response?.data?.error || error.message),
+      });
+    }
+  };
 
   const addSection = () => {
     if (sectionText.trim()) {
@@ -85,14 +224,15 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
       };
 
       // Submit the proposition
-      const response = await addProposition(subject._id, propositionData);
+      const response = await addProposition(subjectData._id, propositionData);
 
       if (response && response.message === "Proposition added successfully.") {
         // Fetch the updated subject with all populated data
-        const updatedSubject = await fetchSubjectById(subject._id);
+        const updatedSubject = await fetchSubjectById(subjectData._id);
 
         // Update local state with the fresh data
         setPropositions(updatedSubject.propositions || []);
+        setSubjectData(updatedSubject);
 
         // Reset the form
         setNewProp({
@@ -130,60 +270,152 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
   return (
     <Modal show={show} onHide={onHide} size="lg" centered>
       <Modal.Header closeButton>
-        <Modal.Title>{subject.title}</Modal.Title>
+        <Modal.Title>{subjectData.title}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         <Tabs defaultActiveKey="curriculum" className="mb-3">
           <Tab eventKey="curriculum" title="Curriculum">
+            <div className="mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <h5 className="mb-0">Course Progress</h5>
+                <Badge bg="info" pill>
+                  {calculateCompletionPercentage()}% Complete
+                </Badge>
+              </div>
+              <div className="progress" style={{ height: "10px" }}>
+                <div
+                  className="progress-bar bg-success"
+                  role="progressbar"
+                  style={{ width: `${calculateCompletionPercentage()}%` }}
+                  aria-valuenow={calculateCompletionPercentage()}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></div>
+              </div>
+            </div>
             <div className="mt-3">
               <h5>Chapters</h5>
               <ListGroup>
-                {subject.curriculum.chapters.map((chapter, index) => (
-                  <ListGroup.Item key={index}>
-                    <div className="fw-bold">{chapter.title}</div>
-                    {chapter.sections && chapter.sections.length > 0 && (
-                      <div className="ms-3 mt-2">
-                        <h6>Sections:</h6>
-                        <ul>
-                          {chapter.sections.map((section, secIndex) => (
-                            <li key={secIndex}>{section}</li>
-                          ))}
-                        </ul>
+                {subjectData.curriculum.chapters.map((chapter, index) => {
+                  // Vérifie si le chapitre entier est complété
+                  const isChapterCompleted = subjectData.progress?.some(
+                    (p) => p.title === chapter.title && !p.title.includes("-")
+                  );
+
+                  return (
+                    <ListGroup.Item
+                      key={index}
+                      className={isChapterCompleted ? "bg-light" : ""}
+                    >
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div className="fw-bold">
+                          {chapter.title}
+                          {isChapterCompleted && (
+                            <Badge bg="success" className="ms-2">
+                              Completed
+                            </Badge>
+                          )}
+                        </div>
+                        <Button
+                          variant={
+                            isChapterCompleted
+                              ? "outline-secondary"
+                              : "outline-success"
+                          }
+                          size="sm"
+                          onClick={() => markAsCompleted(chapter.title)}
+                          disabled={isChapterCompleted}
+                        >
+                          {isChapterCompleted ? (
+                            <>
+                              <i className="bi bi-check-circle me-1"></i>
+                              Completed
+                            </>
+                          ) : (
+                            "Mark Chapter Complete"
+                          )}
+                        </Button>
                       </div>
-                    )}
-                  </ListGroup.Item>
-                ))}
+                      {chapter.sections && chapter.sections.length > 0 && (
+                        <div className="ms-3 mt-2">
+                          <h6>Sections:</h6>
+                          <ul className="list-unstyled">
+                            {chapter.sections.map((section, secIndex) => {
+                              const isSectionCompleted =
+                                subjectData.progress?.some(
+                                  (p) =>
+                                    p.title === `${chapter.title} - ${section}`
+                                );
+
+                              // Get completion date if section is completed
+                              const completionDate = isSectionCompleted
+                                ? new Date(
+                                    subjectData.progress.find(
+                                      (p) =>
+                                        p.title ===
+                                        `${chapter.title} - ${section}`
+                                    ).completedDate
+                                  ).toLocaleDateString()
+                                : null;
+
+                              return (
+                                <li
+                                  key={secIndex}
+                                  className="d-flex justify-content-between align-items-center my-1 p-2 rounded"
+                                  style={{
+                                    backgroundColor: isSectionCompleted
+                                      ? "#f8f9fa"
+                                      : "transparent",
+                                  }}
+                                >
+                                  <div>
+                                    <span
+                                      className={
+                                        isSectionCompleted
+                                          ? "text-decoration-line-through text-muted"
+                                          : ""
+                                      }
+                                    >
+                                      {section}
+                                    </span>
+                                    {isSectionCompleted && (
+                                      <small className="text-success ms-2">
+                                        (Completed on {completionDate})
+                                      </small>
+                                    )}
+                                  </div>
+                                  {!isSectionCompleted ? (
+                                    <Button
+                                      variant="outline-primary"
+                                      size="sm"
+                                      onClick={() =>
+                                        markAsCompleted(chapter.title, section)
+                                      }
+                                    >
+                                      Mark Complete
+                                    </Button>
+                                  ) : (
+                                    <Badge bg="success" pill>
+                                      <i className="bi bi-check"></i>
+                                    </Badge>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                    </ListGroup.Item>
+                  );
+                })}
               </ListGroup>
             </div>
           </Tab>
-
-          <Tab eventKey="progress" title="My Progress">
-            <div className="mt-3">
-              {subject.progress && subject.progress.length > 0 ? (
-                <ListGroup>
-                  {subject.progress.map((item, index) => (
-                    <ListGroup.Item key={index}>
-                      <div className="d-flex justify-content-between">
-                        <span>{item.title}</span>
-                        <Badge bg="success">Completed</Badge>
-                      </div>
-                      <small className="text-muted">
-                        {new Date(item.completedDate).toLocaleDateString()}
-                      </small>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              ) : (
-                <div className="text-muted">No progress recorded yet.</div>
-              )}
-            </div>
-          </Tab>
-
           <Tab eventKey="evaluations" title="Evaluations">
             <div className="mt-3">
-              {subject.evaluations && subject.evaluations.length > 0 ? (
+              {subjectData.evaluations && subjectData.evaluations.length > 0 ? (
                 <ListGroup>
-                  {subject.evaluations.map((evalItem, index) => (
+                  {subjectData.evaluations.map((evalItem, index) => (
                     <ListGroup.Item key={index}>
                       <div className="fw-bold">Score: {evalItem.score}/100</div>
                       <div className="mt-2">{evalItem.feedback}</div>
@@ -195,7 +427,6 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
               )}
             </div>
           </Tab>
-
           <Tab eventKey="propositions" title="Propositions">
             <div className="mt-3">
               <h5>Submit a New Proposition</h5>
@@ -490,12 +721,11 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
               </div>
             </div>
           </Tab>
-
           <Tab eventKey="history" title="History">
             <div className="mt-3">
-              {subject.history && subject.history.length > 0 ? (
+              {subjectData.history && subjectData.history.length > 0 ? (
                 <ListGroup>
-                  {subject.history.map((entry, index) => (
+                  {subjectData.history.map((entry, index) => (
                     <ListGroup.Item key={index}>
                       <div>
                         <strong>Date:</strong>{" "}
