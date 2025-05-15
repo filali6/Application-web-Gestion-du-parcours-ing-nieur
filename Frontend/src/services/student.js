@@ -151,3 +151,58 @@ export const updateStudentPassword = async (id, passwordData, token) => {
     };
   }
 };
+
+//cv
+export const getStudentCV = async (studentId, token) => {
+  try {
+    const response = await axios.get(
+      `http://localhost:5000/students/${studentId}/cv`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    // Vérifier que les compétences sont bien un tableau
+    if (response.data?.cv?.skills && !Array.isArray(response.data.cv.skills)) {
+      response.data.cv.skills = [response.data.cv.skills];
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching student CV:", error);
+    return null;
+  }
+};
+// Get student's own CV
+
+export const getCV = async (token) => {
+  try {
+    const response = await axios.get(`http://localhost:5000/student/cv/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 404) {
+      return null; // Retourne null si le CV n'existe pas
+    }
+    console.error("Error fetching student CV:", error);
+    throw error;
+  }
+};
+
+// Update student's CV
+export const updateCV = async (data, token) => {
+  try {
+    const response = await axios.patch(
+      `http://localhost:5000/student/cv`,
+      data,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating student CV:", error);
+    throw error;
+  }
+};

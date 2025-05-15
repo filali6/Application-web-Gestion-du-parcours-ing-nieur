@@ -36,4 +36,46 @@ export const getTopics = async () => {
     throw error;
   }
 };
+export const getStudentInternshipDetails = async () => {
+  try {
+    const selectedTopicId = localStorage.getItem("selectedTopicId");
+    console.log("ID du sujet récupéré du localStorage:", selectedTopicId);
+    
+    const token = localStorage.getItem("token");
+
+    const response = await Axios.get(
+      `http://localhost:5000/internship/me/${selectedTopicId}`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      }
+    );
+
+    return response.data.stageDetails;
+  } catch (error) {
+    console.error(
+      "Erreur lors de la récupération des détails du stage:",
+      error
+    );
+    throw error;
+  }
+};
+export const getStudentPVDetails = async () => {
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await Axios.get(`http://localhost:5000/internship/pv`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data.pvDetails; // car le backend renvoie { message, pvDetails }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
+    throw error;
+  }
+};
  

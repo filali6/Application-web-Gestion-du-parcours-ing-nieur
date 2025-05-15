@@ -51,35 +51,144 @@ const updatedPV = await PV.findById(pv._id).populate({
 };
 export const getStudentPVDetails = async (req, res) => {
   try {
-    const studentId = req.auth.userId; 
+    const studentId = req.auth.userId;
 
     if (!studentId) {
       return res.status(400).json({ message: "Student ID is required." });
     }
-    const sujet = await Sujet.findOne({ student: studentId });
-    if (!sujet) {
+
+    // Trouver tous les sujets de l'étudiant
+    const sujets = await Sujet.find({ student: studentId });
+
+    if (sujets.length === 0) {
       return res
         .status(404)
         .json({ message: "Aucun sujet trouvé pour cet étudiant." });
     }
 
-    const pv = await PV.findOne({ sujet: sujet._id });
+    const sujetIds = sujets.map((s) => s._id);
 
-    if (!pv) {return res.status(404).json({ message: "Aucun PV trouvé pour ce sujet." });
+    // Trouver tous les PV associés à ces sujets
+    const pvs = await PV.find({ sujet: { $in: sujetIds } });
+
+    if (pvs.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Aucun PV trouvé pour les sujets de cet étudiant." });
     }
-    const response = {
-      sujetId: sujet._id,
-      sujetTitre: sujet.titre,
-      isValidated: pv.isValidated,
-      reason: pv.reason || "Non applicable",  
-    };
-    res.status(200).json({message: "Détails du PV de l'étudiant.",pvDetails: response,
+
+    // Construire une réponse avec tous les PV trouvés
+    const pvDetails = pvs.map((pv) => {
+      const sujet = sujets.find(
+        (s) => s._id.toString() === pv.sujet.toString()
+      );
+      return {
+        sujetId: sujet?._id,
+        sujetTitre: sujet?.titre || "Titre inconnu",
+        isValidated: pv.isValidated,
+        reason: pv.reason || "Non applicable",
+      };
+    });
+
+    res.status(200).json({
+      message: "Liste des PV de l'étudiant.",
+      pvDetails,
     });
   } catch (error) {
-    console.error("Erreur lors de la récupération des détails du PV :", error);
+    console.error("Erreur lors de la récupération des PV :", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de la récupération des PV.",
+      error: error.message,
+    });
+  }
+};
+export const getTeacherPVDetails = async (req, res) => {
+  try {
+    const teacherId = req.auth.userId;
+
+    if (!teacherId) {
+      return res.status(400).json({ message: "ID de l'enseignant requis." });
+    }
+
+    // 1. Trouver les plans où l'enseignant est affecté
+    const plans = await Plan.find({ teachers: teacherId }).populate({
+      path: "sujet",
+      populate: {
+        path: "student",
+        select: "firstName lastName",
+      },
+    });
+
+    if (!plans || plans.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Aucun sujet affecté à cet enseignant." });
+    }
+
+    const sujetIds = plans
+      .filter((plan) => plan.sujet) // filtrer ceux avec sujet non null
+      .map((plan) => plan.sujet._id);
+
+    // 2. Chercher les PV associés à ces sujets
+    const pvs = await PV.find({ sujet: { $in: sujetIds } });
+
+    // 3. Construire la réponse
+    const result = plans.map((plan) => {
+      const sujet = plan.sujet;
+      const pv = pvs.find((p) => p.sujet.toString() === sujet?._id.toString());
+
+      return {
+        sujetId: sujet?._id,
+        sujetTitre: sujet?.titre || "Titre inconnu",
+        student:
+          sujet?.student?.firstName && sujet?.student?.lastName
+            ? `${sujet.student.firstName} ${sujet.student.lastName}`
+            : "Étudiant inconnu",
+        isValidated: pv?.isValidated ?? null,
+        reason: pv?.reason || "Non applicable",
+      };
+    });
+
+    res.status(200).json({
+      message: "Liste des PV associés aux sujets affectés à l'enseignant.",
+      data: result,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
     res.status(500).json({
       message:
-        "Une erreur est survenue lors de la récupération des détails du PV.",
+        "Une erreur est survenue lors de la récupération des PV de l'enseignant.",
+      error: error.message,
+    });
+  }
+};
+export const getPV = async (req, res) => {
+  try {
+    // Récupérer tous les PV avec les infos du sujet associé
+    const pvs = await PV.find().populate("sujet", "titre");
+
+    if (!pvs || pvs.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "Aucun PV trouvé dans la base de données." });
+    }
+
+    // Préparer la réponse
+    const pvDetails = pvs.map((pv) => ({
+      sujetId: pv.sujet?._id || null,
+      sujetTitre: pv.sujet?.titre || "Titre inconnu",
+      isValidated: pv.isValidated,
+      reason: pv.reason || "Non applicable",
+    }));
+
+    res.status(200).json({
+      message: "Liste de tous les PV.",
+      pvDetails,
+    });
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
+    res.status(500).json({
+      message: "Une erreur est survenue lors de la récupération des PV.",
       error: error.message,
     });
   }

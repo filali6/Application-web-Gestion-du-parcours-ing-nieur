@@ -61,7 +61,7 @@ export const getCvByStudentId = async (req, res) => {
   }
 };
 
-// ajouter competence au cv ( utiliser dans creation de competence)
+// ajouter competence au cv (utiliser dans creation de competence)
 export const updateStudentCvsWithSkill = async (skillId, subjects) => {
   try {
     // Trouver les étudiants associés aux matières
@@ -69,42 +69,30 @@ export const updateStudentCvsWithSkill = async (skillId, subjects) => {
       "assignedStudent"
     );
 
-    // console.log("Students found for subjects:", students);
-
     for (const studentId of students) {
-      // Vérifier si l'ID de l'étudiant existe dans la collection Students
+      // Vérifier si l'ID de l'étudiant existe
       const studentExists = await Student.exists({ _id: studentId });
-      if (!studentExists) {
-        // console.log(`Student with ID ${studentId} does not exist. Skipping.`);
-        continue; // Passer à l'étudiant suivant si l'ID est invalide
-      }
+      if (!studentExists) continue;
 
       // Trouver ou créer le CV de l'étudiant
-      let studentCv = await CV.findOne({ student: studentId })
-        .populate("skills", "name -_id")
-        .populate("diplomas", "title year -_id")
-        .populate("certifications", "name year -_id")
-        .populate("experiences", "title description periode -_id")
-        .populate("languages", "name -_id");
+      let studentCv = await CV.findOne({ student: studentId });
 
       if (!studentCv) {
-        console.log(`V for student ${studentId}`);
         studentCv = new CV({ student: studentId, skills: [] });
       }
 
-      // Ajouter la compétence si elle n'existe pas déjà
-      if (!studentCv.skills.some((skill) => skill._id.toString() === skillId)) {
+      // Vérifier si la compétence existe déjà
+      const skillExists = studentCv.skills.some(
+        (skill) => skill.toString() === skillId.toString()
+      );
+
+      if (!skillExists) {
         studentCv.skills.push(skillId);
         await studentCv.save();
-        // console.log(`Added skill ${skillId} to CV of student ${studentId}`);
       }
-
-      // Mettre à jour le CV avec les données actuelles (si nécessaire)
-      await studentCv.save();
-      // console.log(`student ${studentId}`);
     }
   } catch (error) {
-    // console.error("Error updating student CVs:", error);
+    console.error("Error updating student CVs:", error);
   }
 };
 

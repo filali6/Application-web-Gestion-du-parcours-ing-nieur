@@ -189,13 +189,16 @@ export const getFinalinternshipDetails = async (req, res) => {
 
 export const getStudentInternshipDetails = async (req, res) => {
   try {
+    const sujetId = req.params.id;
     const studentId = req.auth.userId;
 
     if (!studentId) {
       return res.status(400).json({ message: "Student ID is required." });
     }
-    const sujet = await Sujet.findOne({ student: studentId });
-
+    const sujet = await Sujet.findOne({
+      _id: sujetId,
+      student: studentId,
+    });
     if (!sujet) {
       return res
         .status(404)

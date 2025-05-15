@@ -319,10 +319,12 @@ const ManageTeachers = () => {
         ]}
         customRenderers={{
           actions: (teacher) => (
-            <ManageIconsTeacher
-              teacher={teacher}
-              onAction={handleActionClick}
-            />
+            <td key={`actions-${teacher._id}`}>
+              <ManageIconsTeacher
+                teacher={teacher}
+                onAction={handleActionClick}
+              />
+            </td>
           ),
         }}
         searchFields={["cin", "firstName", "lastName", "email"]}

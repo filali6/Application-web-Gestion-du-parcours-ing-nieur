@@ -1,79 +1,180 @@
 import React, { useEffect, useState } from "react";
-import { getPlanningsDetails } from "services/internshipmanage";
-import { Container, Table, Spinner } from "react-bootstrap";
+import { Table, Typography, Space, Spin, Alert, Tag, Button } from "antd";
+import { getTopics } from "./serviceInternshipsAdmin";
+import {
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
+  EyeOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+
+const { Title, Text } = Typography;
 
 const Consult = () => {
-  const [plannings, setPlannings] = useState([]);
+  const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [noSubjectsMessage, setNoSubjectsMessage] = useState(""); // Ajout d'un état pour le message
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchPlannings = async () => {
+    const fetchTopics = async () => {
       try {
-        const data = await getPlanningsDetails();
-        if (data.length === 0) {
-          setNoSubjectsMessage("Aucun sujet pour le moment.");
+        setLoading(true);
+        const response = await getTopics();
+
+        if (response.topics && response.topics.length > 0) {
+          setTopics(response.topics);
+          console.log("Topics reçus:", response.topics);
         } else {
-          setPlannings(data);
+          setError(response.message || "Aucun sujet trouvé.");
         }
       } catch (error) {
-        setError(
-          "Une erreur est survenue lors de la récupération des plannings"
-        );
+        setError("Une erreur est survenue lors de la récupération des sujets.");
+        console.error("Erreur:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchPlannings();
+
+    fetchTopics();
   }, []);
 
-  if (loading) return <Spinner animation="border" variant="primary" />;
-  if (error) return <p>{error}</p>;
+  // Fonction pour rediriger vers la page de détails du sujet
+  const goToTopicDetails = (topic) => {
+    // Stocker l'ID du sujet dans localStorage pour y accéder depuis la page de détails
+    localStorage.setItem("selectedTopicId", topic._id || topic.id);
+    console.log("ID du sujet stocké:", topic._id || topic.id);
 
-  // Si il n'y a pas de sujet, afficher le message
-  if (noSubjectsMessage) return <p>{noSubjectsMessage}</p>;
+    // Rediriger vers la page de détails
+    navigate(`/internships/topic-status`);
+  };
+
+  // Définition des colonnes pour la table Ant Design
+  const columns = [
+    {
+      title: "Topic",
+      dataIndex: "titre",
+      key: "titre",
+      render: (text) => <a>{text}</a>,
+      sorter: (a, b) => a.titre.localeCompare(b.titre),
+    },
+    {
+      title: "Student Name",
+      dataIndex: "student",
+      key: "studentName",
+      render: (student) => {
+        if (student && student.firstName && student.lastName) {
+          return `${student.firstName} ${student.lastName}`;
+        } else if (student && student.name) {
+          return student.name;
+        } else if (typeof student === "string") {
+          return student;
+        }
+        return "N/A";
+      },
+      sorter: (a, b) => {
+        const nameA = a.student?.lastName || a.student?.name || "";
+        const nameB = b.student?.lastName || b.student?.name || "";
+        return nameA.localeCompare(nameB);
+      },
+    },
+    {
+      title: "Student E-mail",
+      dataIndex: "student",
+      key: "studentEmail",
+      render: (student) => {
+        if (student && student.email) {
+          return student.email;
+        }
+        return "N/A";
+      },
+    },
+    {
+      title: "Submission Status",
+      key: "submissionStatus",
+      render: (_, record) => {
+        if (record.isLate === true) {
+          return (
+            <Tag icon={<ClockCircleOutlined />} color="orange">
+              Late Submission
+            </Tag>
+          );
+        } else if (record.isLate === false) {
+          return (
+            <Tag icon={<CheckCircleOutlined />} color="green">
+              On-time Submission
+            </Tag>
+          );
+        } else {
+          return (
+            <Tag icon={<ExclamationCircleOutlined />} color="default">
+              Not submitted
+            </Tag>
+          );
+        }
+      },
+      filters: [
+        { text: "Late Submission", value: true },
+        { text: "On-time Submission", value: false },
+        { text: "Non soumis", value: null },
+      ],
+      onFilter: (value, record) => {
+        if (value === null) {
+          return record.isLate === undefined;
+        }
+        return record.isLate === value;
+      },
+      sorter: (a, b) => {
+        const valueA = a.isLate === undefined ? 2 : a.isLate ? 1 : 0;
+        const valueB = b.isLate === undefined ? 2 : b.isLate ? 1 : 0;
+        return valueA - valueB;
+      },
+    },
+    {
+      title: "Internship status progress",
+      key: "followUp",
+      align: "center",
+      render: (_, record) => (
+        <Button
+          type="primary"
+          icon={<EyeOutlined />}
+          onClick={() => goToTopicDetails(record)}
+          size="middle"
+        >
+          see Details
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div className="teacher-table-container">
-      <h2 className="text-center mb-4">Subject List</h2>
+    <div style={{ padding: "8px" }}>
+      <Title level={3} style={{ marginBottom: "24px" }}>
+        Internships Topics List
+      </Title>
 
-      <Container className="my-4">
+      {loading ? (
+        <div style={{ textAlign: "center", margin: "40px 0" }}>
+          <Spin size="large" />
+        </div>
+      ) : error ? (
+        <Alert message="Erreur" description={error} type="error" showIcon />
+      ) : (
         <Table
-          striped
-          hover
-          responsive
-          style={{
-            borderCollapse: "collapse",
-            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)", // Ombre légère
-          }}
-        >
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Student Email</th>
-              <th>Teacher</th>
-              <th>Teacher Email</th>
-              <th>Documents soumis</th>
-              <th>Statut</th>
-              <th>Publish</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plannings.map((planning) => (
-              <tr key={planning.id}>
-                <td>{planning.studentName}</td>
-                <td>{planning.studentEmail}</td>
-                <td>{planning.teacherName}</td>
-                <td>{planning.teacherEmail}</td>
-                <td>{planning.documents.length > 0 ? "Oui" : "Non"}</td>
-                <td>{planning.submissionStatus}</td>
-                <td>{planning.isPublished ? "Publié" : "Non publié"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Container>
+          columns={columns}
+          dataSource={topics.map((topic) => ({
+            ...topic,
+            key: topic._id || topic.id,
+          }))}
+          pagination={{ pageSize: 10 }}
+          bordered
+          style={{ backgroundColor: "white", borderRadius: "8px" }}
+          loading={loading}
+          scroll={{ x: true }}
+        />
+      )}
     </div>
   );
 };
