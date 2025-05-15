@@ -54,7 +54,11 @@ export const getSubjectDetails = async (id) => {
 
 
 export const updateSubjectProgress = async (id, completedSections) => {
-  const res = await axios.post(`${API_BASE}/subjects/${id}/advancement`, { completedSections }, getAuthHeader());
+  const res = await axios.post(
+    `${API_BASE}/subjects/${id}/advancement`, 
+    { completedSections },
+    getAuthHeader()
+  );
   return res.data;
 };
 
