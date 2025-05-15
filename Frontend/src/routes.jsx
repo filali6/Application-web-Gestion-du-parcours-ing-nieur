@@ -119,6 +119,15 @@ const routes = [
         path: '/internships/my-internships',
         element: lazy(() => import('./views/studentSidebarContents/internships/myInternships'))
       },
+
+      {
+        path: '/student/student-profile',
+        element: lazy(() => import('./views/studentSidebarContents/profile/studentProfile'))
+      },
+      {
+        path: '/student/student-cv',
+        element: lazy(() => import('./views/studentSidebarContents/cv/studentCV'))
+      },
       {
         path: '*',
         exact: 'true',
