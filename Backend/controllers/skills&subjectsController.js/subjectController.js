@@ -97,6 +97,10 @@ export const getSubjects = async (req, res) => {
 
     let query = { ...filter };
 
+      const { level, semester } = req.query;
+      if (level) query.level = level;
+      if (semester) query.semester = semester;
+
     if (role === "admin") {
       // Admin sees everything
     } else if (role === "teacher") {
@@ -104,14 +108,11 @@ export const getSubjects = async (req, res) => {
       query.assignedTeacher = userId;
       query.isPublished = true;
 
-      // Teacher-specific filters
-      const { level, semester } = req.query;
-      if (level) query.level = level;
-      if (semester) query.semester = semester;
     } else if (role === "student") {
       // Student sees only their own published subjects
       query.assignedStudent = userId;
       query.isPublished = true;
+      
     } else {
       return res.status(403).json({ error: "Access denied." });
     }
@@ -831,5 +832,42 @@ export const getSubjectById = async (req, res) => {
     res
       .status(500)
       .json({ error: "An error occurred while fetching the subject." });
+  }
+};
+
+
+
+/////////////// get progress for stuener /////////////////////////////////
+export const getSubjectProgress = async (req, res) => {
+  const { id } = req.params;
+  const { role, userId } = req.auth;
+
+  try {
+    const subject = await Subject.findById(id)
+      .populate("assignedStudent", "email firstName lastName")
+      .populate("assignedTeacher", "email firstName lastName");
+
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found." });
+    }
+
+    if (
+      role === "student" &&
+      (!subject.assignedStudent ||
+        !subject.assignedStudent.some(
+          (student) => student._id.toString() === userId
+        ))
+    ) {
+      return res.status(403).json({
+        error: "You are not authorized to view this subject's progress.",
+      });
+    }
+
+    return res.status(200).json({ progress: subject.progress });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching subject progress." });
   }
 };

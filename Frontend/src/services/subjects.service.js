@@ -136,3 +136,10 @@ export const fetchSubjectById = async (id) => {
   const res = await axios.get(`${API_BASE}/subjects/${id}/SubjectId`, getAuthHeader());
   return res.data.subject;
 };
+
+
+export const getSubjectProgress = async (id) => {
+  const res = await axios.get(`${API_BASE}/subjects/${id}/progress`, getAuthHeader());
+  return res.data;
+};
+
