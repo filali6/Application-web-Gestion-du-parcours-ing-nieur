@@ -36,16 +36,17 @@ api.interceptors.response.use(
   }
 );
 
-export const fetchSubjects = async () => {
+
+
+export const fetchSubjects = async (filters = {}) => {
   try {
-    const response = await api.get('/'); 
-    console.log('Subjects API Response:', response.data);
+    const response = await api.get("/", { params: filters });
     return response.data;
-  } catch (error) {
-    console.error('Error fetching subjects:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error || 'Failed to fetch subjects');
+  } catch (err) {
+    throw err;
   }
 };
+
 
 export const getSubjectDetails = async (subjectId) => {
   try {
@@ -55,5 +56,8 @@ export const getSubjectDetails = async (subjectId) => {
     throw new Error(error.response?.data?.error || 'Failed to fetch subject details');
   }
 };
+
+
+
 
 
