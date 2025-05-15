@@ -134,6 +134,10 @@ const routes = [
         ),
       },
       {
+        path: "/internships/topic-status",
+        element: lazy(() => import("./views/adminSidebarContents/internships/topicStatus")),
+      },
+      {
         path: "/periode/manage-periode",
         element: lazy(
           () => import("./views/adminSidebarContents/periode/ManagePeriode")
@@ -191,7 +195,16 @@ const routes = [
           () =>
             import("./views/studentSidebarContents/internships/myInternships")
         ),
+      }, // NOTEZ LA VIRGULE ICI
+      // Ajoutez la nouvelle route ici
+      {
+        path: "/internships/details/",
+        element: lazy(
+          () =>
+            import("./views/studentSidebarContents/internships/topicDetails")
+        ),
       },
+
 
       {
         path: "/student/student-profile",

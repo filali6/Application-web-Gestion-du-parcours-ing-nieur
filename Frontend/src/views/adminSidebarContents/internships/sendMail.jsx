@@ -1,65 +1,86 @@
 import React, { useState } from "react";
+import { Modal, Button, Radio, Form, message } from "antd";
+import { SendOutlined, MailOutlined } from "@ant-design/icons";
 import { sendPlanningEmails } from "./serviceInternshipsAdmin";
-import { Modal, Button, Form } from "react-bootstrap";
 
 const SendMailModal = ({ show, toggleShow }) => {
+  const [form] = Form.useForm();
   const [sendType, setSendType] = useState("first");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     try {
       const response = await sendPlanningEmails(sendType);
       if (response.success) {
-        alert("Emails sent with success !");
+        message.success("Emails envoyés avec succès !");
         toggleShow();
       } else {
-        alert(response.message);
+        message.error(response.message || "Erreur lors de l'envoi des emails");
       }
     } catch (error) {
       console.error("Erreur lors de l'envoi :", error);
-      alert("Erreur lors de l'envoi des emails");
+      message.error("Erreur lors de l'envoi des emails");
     }
   };
 
-  if (!show) return null;
-
   return (
-    <Modal show={show} onHide={toggleShow}>
-      <Modal.Header closeButton>
-        <Modal.Title>Choose sent type</Modal.Title>
-      </Modal.Header>
-
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
-          <Form.Group className="mb-3">
-            <Form.Check
-              type="radio"
-              id="checkbox-first"
-              label="First Sent"
-              value="first"
-              checked={sendType === "first"}
-              onChange={() => setSendType("first")}
-            />
-            <Form.Check
-              type="radio"
-              id="checkbox-modified"
-              label="Modified Sent "
-              value="modified"
-              checked={sendType === "modified"}
-              onChange={() => setSendType("modified")}
-            />
-          </Form.Group>
-        </Form>
-      </Modal.Body>
-
-      <Modal.Footer>
-        <Button variant="secondary" onClick={toggleShow}>
+    <Modal
+      title={
+        <span>
+          <MailOutlined style={{ marginRight: 8 }} /> Choose send type
+        </span>
+      }
+      open={show}
+      onCancel={toggleShow}
+      footer={[
+        <Button key="cancel" onClick={toggleShow}>
           Cancel
-        </Button>
-        <Button variant="primary" type="submit" onClick={handleSubmit}>
+        </Button>,
+        <Button
+          key="send"
+          type="primary"
+          icon={<SendOutlined />}
+          onClick={handleSubmit}
+        >
           Send
-        </Button>
-      </Modal.Footer>
+        </Button>,
+      ]}
+    >
+      <Form form={form} layout="vertical" initialValues={{ sendType: "first" }}>
+        <Form.Item name="sendType" style={{ marginBottom: 0 }}>
+          <Radio.Group
+            value={sendType}
+            onChange={(e) => setSendType(e.target.value)}
+            style={{ width: "100%" }}
+          >
+            <Radio.Button
+              value="first"
+              style={{
+                width: "50%",
+                textAlign: "center",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              First send
+            </Radio.Button>
+            <Radio.Button
+              value="modified"
+              style={{
+                width: "50%",
+                textAlign: "center",
+                height: "40px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              Send After Update 
+            </Radio.Button>
+          </Radio.Group>
+        </Form.Item>
+      </Form>
     </Modal>
   );
 };
