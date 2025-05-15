@@ -77,10 +77,10 @@ const getMenuItems = () => {
     },
     {
       id: 'my-subjects',
-      title: 'My Subjects',
+      title: 'Subjects & Skills',
       type: 'item',
       icon: 'feather icon-book',
-      url: '/subject/subjects-list'
+      url: '/subject-skills/subjects-skills-list'
     },
     {
       id: 'my-pfas',
@@ -100,10 +100,10 @@ const getMenuItems = () => {
   const studentPages = [
     {
       id: 'student-skills',
-      title: 'My Skills & Subjects',
+      title: 'My Subjects',
       type: 'item',
       icon: 'feather icon-award',
-      url: '/skills-subjects/my-skills-subjects'
+      url: '/subjects/my-subjects-list'
     },
     {
       id: 'student-pfa',
@@ -118,6 +118,13 @@ const getMenuItems = () => {
       type: 'item',
       icon: 'feather icon-activity',
       url: '/internships/my-internships'
+    },
+    {
+      id: 'student-cv',
+      title: 'My Cv',
+      type: 'item',
+      icon: 'feather icon-file-text',
+      url: '/student/student-cv'
     }
   ];
 

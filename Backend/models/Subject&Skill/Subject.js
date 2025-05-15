@@ -4,6 +4,11 @@ import { type } from "os";
 const subjectSchema = mongoose.Schema({
   title: { type: String, required: true },
   level: { type: String, required: true },
+  option: {
+    type: String,
+    enum: ["inLog", "inRev", null],
+    default: null,
+  },
   semester: { type: String, required: true },
   curriculum: {
     chapters: [
@@ -27,14 +32,14 @@ const subjectSchema = mongoose.Schema({
   ],
   isArchived: { type: Boolean, default: false },
   isPublished: { type: Boolean, default: false },
-
   evaluations: [
     {
       feedback: { type: String, required: true },
       score: { type: Number, required: true },
-      studentId: { type: mongoose.Schema.Types.ObjectId, ref: "Student" },
+      hashedStudentId: { type: String, required: true },
     },
   ],
+
   progress: [
     {
       title: { type: String, required: true },
@@ -121,6 +126,8 @@ const subjectSchema = mongoose.Schema({
     },
   ],
   year: { type: Number },
+  assignedTeacherHasAdvanced: { type: Boolean, default: false },
+
 });
 
 export default mongoose.model("Subject", subjectSchema);
