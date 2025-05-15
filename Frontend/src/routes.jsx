@@ -149,7 +149,10 @@ const routes = [
       {
         path: "/subject-skills/subjects-skills-list",
         element: lazy(
-          () => import("./views/teacherSidebarContents/subjects/subjectsList")
+          () =>
+            import(
+              "./views/teacherSidebarContents/subjects-skills/subjectsList"
+            )
         ),
       },
       {
@@ -170,9 +173,7 @@ const routes = [
         path: "/subjects/my-subjects-list",
         element: lazy(
           () =>
-            import(
-              "./views/studentSidebarContents/skills-subjects/mySkillsSubjects"
-            )
+            import("./views/studentSidebarContents/subjects/mySubjects")
         ),
       },
       {
