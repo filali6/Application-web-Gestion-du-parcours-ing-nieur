@@ -62,4 +62,20 @@ export const getStudentInternshipDetails = async () => {
     throw error;
   }
 };
+export const getStudentPVDetails = async () => {
+  const token = localStorage.getItem("token");
+
+  try {
+    const response = await Axios.get(`http://localhost:5000/internship/pv`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data.pvDetails; // car le backend renvoie { message, pvDetails }
+  } catch (error) {
+    console.error("Erreur lors de la récupération des PV :", error);
+    throw error;
+  }
+};
  

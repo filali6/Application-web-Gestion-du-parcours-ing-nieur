@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Table, Button, Space, Tag, Modal, Form, Input, Spin } from "antd";
+import {
+  Table,
+  Button,
+  Space,
+  Tag,
+  Modal,
+  Form,
+  Input,
+  Spin,
+  Radio,
+} from "antd";
 import {
   EditOutlined,
   CalendarOutlined,
@@ -9,23 +19,31 @@ import {
   UserOutlined,
   MailOutlined,
 } from "@ant-design/icons";
-import { fetchTeacherTopics, getPlansDetails, updateSoutenance } from "./internshipsListservice";
+import {
+  fetchTeacherTopics,
+  getPlansDetails,
+  updateSoutenance,
+  fillPV,
+  getTeacherPVDetails,
+} from "./internshipsListservice"; // Assurez-vous que fillPV existe dans ce fichier
 
 const { TextArea } = Input;
 
 const InternshipsList = () => {
-  // États pour gérer le modal
   const [showModal, setShowModal] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [allTopics, setAllTopics] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // États pour les champs du formulaire
   const [horaire, setHoraire] = useState("");
   const [date, setDate] = useState("");
   const [googleMeetLink, setGoogleMeetLink] = useState("");
 
-  // Fonction pour formater la date pour l'affichage
+  const [selectedSujet, setSelectedSujet] = useState(null);
+  const [isPvModalVisible, setIsPvModalVisible] = useState(false);
+  const [pvContent, setPvContent] = useState("");
+  const [isValidated, setIsValidated] = useState(true);
+
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
@@ -36,7 +54,6 @@ const InternshipsList = () => {
     });
   };
 
-  // Charger les sujets initialement
   useEffect(() => {
     loadTopics();
   }, []);
@@ -44,22 +61,67 @@ const InternshipsList = () => {
   const loadTopics = async () => {
     try {
       setLoading(true);
-
-      const [topicsData, plansData] = await Promise.all([
+      const [topicsData, plansData, pvData] = await Promise.all([
         fetchTeacherTopics(),
         getPlansDetails(),
+        getTeacherPVDetails(), // Remplace getFinalInternshipDetails()
       ]);
 
-      console.log("Topics récupérés :", topicsData);
-      console.log("Plans récupérés :", plansData);
+      // Afficher des exemples des données récupérées pour comprendre leur structure
+      console.log("STRUCTURE ANALYSIS:");
+      console.log(
+        "Fetched Topics Data (first item):",
+        topicsData.length > 0 ? topicsData[0] : "No topics"
+      );
+      console.log(
+        "Fetched Plans Data (first item):",
+        plansData.length > 0 ? plansData[0] : "No plans"
+      );
+      console.log("Fetched PV Data (all):", pvData);
 
-      // Fusionner chaque topic avec son plan associé s'il existe
+      // Créons une table de correspondance pour les PVs basée sur l'ID du sujet
+      const pvBySujetId = {};
+
+      pvData.forEach((pv) => {
+        if (pv.sujetId) {
+          console.log(`Mapping PV for sujet ID: ${pv.sujetId}`, pv);
+          pvBySujetId[pv.sujetId] = pv;
+        }
+      });
+
+      console.log("PVs by sujet ID:", pvBySujetId);
+
       const topicsWithSchedule = topicsData.map((topic) => {
-        // On suppose que topic._id ou topic.sujetId correspond au sujet du plan
+        console.log("Processing topic:", topic);
+
         const matchingPlan = plansData.find(
           (plan) =>
-            plan.sujet?._id === topic._id || plan.sujet?._id === topic.sujetId
+            plan.sujet?._id === topic._id ||
+            plan.sujet?._id === topic.sujetId ||
+            (plan.sujet && plan.sujet === topic._id) ||
+            (plan.sujetId && plan.sujetId === topic.sujetId)
         );
+
+        // Vérifier si l'email de l'étudiant est défini
+        const studentEmail = topic.student?.email || topic.studentEmail;
+        const studentName = topic.student?.lastName || topic.studentName;
+
+        console.log(
+          `Looking for PV with student name: ${studentName} and sujet ID: ${topic._id || topic.sujetId}`
+        );
+
+        // Rechercher le PV correspondant en utilisant l'ID du sujet
+        const topicId = topic._id || topic.sujetId;
+        const matchingPV = pvBySujetId[topicId] || null;
+
+        if (matchingPV) {
+          console.log(
+            `Found matching PV for topic (${topic.sujetTitre}):`,
+            matchingPV
+          );
+        } else {
+          console.log(`No matching PV found for topic: ${topic.sujetTitre}`);
+        }
 
         const planningData = matchingPlan
           ? {
@@ -73,28 +135,43 @@ const InternshipsList = () => {
               googleMeetLink: "",
             };
 
-        console.log(
-          `Planning pour le sujet ${topic._id || topic.sujetId}:`,
-          planningData
-        );
+        // Récupérer les détails du PV
+        let pvDetails = null;
+
+        if (matchingPV) {
+          console.log(
+            `Final PV data found for topic ${topic.sujetTitre}:`,
+            matchingPV
+          );
+
+          pvDetails = {
+            isValidated:
+              matchingPV.isValidated !== undefined
+                ? matchingPV.isValidated
+                : null,
+            reason: matchingPV.reason || "Non applicable",
+          };
+        } else {
+          console.log(`No PV data found for topic ${topic.sujetTitre}`);
+        }
 
         return {
           ...topic,
           ...planningData,
+          // Stocker les détails du PV directement dans la propriété pv
+          pv: pvDetails,
         };
       });
 
+      console.log("All topics with planning and PV:", topicsWithSchedule);
       setAllTopics(topicsWithSchedule);
     } catch (err) {
-      console.error("Erreur lors du chargement des sujets et plans:", err);
+      console.error("Erreur:", err);
     } finally {
       setLoading(false);
     }
   };
-
-  // Fonction pour ouvrir le modal
   const openModal = (topic) => {
-    console.log("Ouverture du modal pour le sujet:", topic.sujetId);
     setSelectedTopic(topic);
     setHoraire(topic.horaire || "");
     setDate(topic.date || "");
@@ -102,78 +179,93 @@ const InternshipsList = () => {
     setShowModal(true);
   };
 
-  // Fonction pour fermer le modal
   const handleCloseModal = () => {
     setShowModal(false);
     setSelectedTopic(null);
   };
 
-  // Fonction pour sauvegarder les modifications
+  const handleOpenPvModal = (record) => {
+    setSelectedSujet(record);
+    setIsPvModalVisible(true);
+    setIsValidated(true);
+    setPvContent("");
+  };
+
+  const handleSubmitPv = async () => {
+    try {
+      // Formater les données selon la structure attendue par le backend
+      const data = {
+        isValidated,
+        reason: pvContent.trim(),
+      };
+
+      console.log("Submitting PV for:", selectedSujet.sujetId);
+      console.log("PV data:", data);
+
+      const response = await fillPV(selectedSujet.sujetId, data);
+      console.log("PV submission response:", response);
+
+      Modal.success({
+        title: "Succès",
+        content: response.message || "Le PV a été rempli avec succès.",
+      });
+
+      // Recharger les données après la soumission
+      await loadTopics();
+
+      setIsPvModalVisible(false);
+      setSelectedSujet(null);
+      setPvContent("");
+    } catch (error) {
+      console.error("Error submitting PV:", error);
+      Modal.error({
+        title: "Erreur",
+        content: error.message || "Erreur lors du remplissage du PV.",
+      });
+    }
+  };
+
   const handleSaveChanges = async () => {
     if (selectedTopic) {
-      console.log("Sauvegarde des modifications pour:", selectedTopic);
-
       try {
-        // Appel à la fonction de service updateSoutenance
-        const result = await updateSoutenance(
+        await updateSoutenance(
           selectedTopic.sujetId,
           date,
           horaire,
           googleMeetLink
         );
-        console.log("Données retournées après mise à jour:", result);
-        
-        // Mise à jour locale des sujets après succès de l'appel API
-        const updatedTopics = allTopics.map((topic) => {
-          if (topic.sujetId === selectedTopic.sujetId) {
-            const updatedTopic = {
-              ...topic,
-              date: date,
-              horaire: horaire,
-              googleMeetLink: googleMeetLink,
-            };
-            console.log("Topic mis à jour:", updatedTopic);
-            return updatedTopic;
-          }
-          return topic;
-        });
 
-        setAllTopics(updatedTopics);
+        // Recharger les données au lieu de faire une mise à jour manuelle
+        await loadTopics();
 
-        // Afficher un message de succès
         Modal.success({
-          title: 'Succès',
-          content: 'La soutenance a été planifiée avec succès!',
+          title: "Succès",
+          content: "La soutenance a été planifiée avec succès!",
         });
 
-        // Fermer le modal
         handleCloseModal();
       } catch (error) {
-        console.error("Erreur lors de la mise à jour de la soutenance:", error);
-        
-        // Afficher un message d'erreur
         Modal.error({
-          title: 'Erreur',
-          content: 'Erreur lors de la planification de la soutenance. Veuillez réessayer.',
+          title: "Erreur",
+          content: "Erreur lors de la planification de la soutenance.",
         });
       }
     }
   };
 
-  // Définition des colonnes pour la Table Ant Design
   const columns = [
     {
       title: "Titre",
       dataIndex: "sujetTitre",
       key: "sujetTitre",
-      render: (text, record) => <strong>{text}</strong>,
+      render: (text) => <strong>{text}</strong>,
     },
     {
       title: "Étudiant",
       dataIndex: "studentName",
       key: "studentName",
       render: (text, record) => (
-        <Space direction="vertical" size="small">
+        <Space direction="vertical">
           <span>
             <UserOutlined /> {text || "Non précisé"}
           </span>
@@ -189,7 +281,7 @@ const InternshipsList = () => {
       title: "Planification",
       key: "schedule",
       render: (_, record) => (
-        <Space direction="vertical" size="small">
+        <Space direction="vertical">
           {record.date && record.horaire ? (
             <>
               <span>
@@ -202,7 +294,7 @@ const InternshipsList = () => {
                 <a
                   href={record.googleMeetLink}
                   target="_blank"
-                  rel="noopener noreferrer"
+                  rel="noreferrer"
                 >
                   <LinkOutlined /> Lien Google Meet
                 </a>
@@ -218,21 +310,20 @@ const InternshipsList = () => {
       title: "Documents",
       key: "documents",
       render: (_, record) => (
-        <Space direction="vertical" size="small">
+        <Space direction="vertical">
           {record.documents && record.documents.length > 0 ? (
             record.documents.map((doc, i) => (
               <a
                 key={i}
                 href={`http://localhost:5000/uploads/${doc.filename}`}
                 target="_blank"
-                rel="noopener noreferrer"
-                download={doc.title}
+                rel="noreferrer"
               >
                 <FileTextOutlined /> {doc.title}
               </a>
             ))
           ) : (
-            <Tag color="default">Aucun document</Tag>
+            <Tag>Aucun document</Tag>
           )}
         </Space>
       ),
@@ -240,15 +331,61 @@ const InternshipsList = () => {
     {
       title: "PV",
       key: "pv",
-      render: (_, record) => (
-        <Space>
-          {record.pv ? (
-            <Tag color="green">Disponible</Tag>
-          ) : (
-            <Tag color="default">Non disponible</Tag>
-          )}
-        </Space>
-      ),
+      render: (_, record) => {
+        // Utiliser directement la propriété pv
+        const pv = record.pv;
+
+        // Log pour débogage
+        console.log(`Rendering PV for ${record.sujetTitre}:`, pv);
+
+        if (!pv) {
+          return <Tag color="default">Non disponible</Tag>;
+        }
+
+        // Si pv est une chaîne de caractères
+        if (typeof pv === "string") {
+          return <Tag color="default">{pv}</Tag>;
+        }
+
+        // Déterminer l'état de validation et la raison à partir de l'objet pv
+        let isValidatedValue = pv.isValidated;
+        let reasonValue = pv.reason || "";
+
+        // Traiter spécifiquement les valeurs "Validé" et "Non validé"
+        let validationStatus;
+        let tagColor;
+
+        if (isValidatedValue === true || isValidatedValue === "Validé") {
+          validationStatus = "Validé";
+          tagColor = "green";
+        } else if (
+          isValidatedValue === false ||
+          isValidatedValue === "Non validé"
+        ) {
+          validationStatus = "Non validé";
+          tagColor = "red";
+        } else if (isValidatedValue === undefined) {
+          validationStatus = "Non spécifié";
+          tagColor = "default";
+        } else {
+          // Valeur inconnue, l'afficher telle quelle
+          validationStatus = isValidatedValue?.toString() || "État inconnu";
+          tagColor = "blue";
+        }
+
+        return (
+          <div>
+            <Tag color={tagColor}>{validationStatus}</Tag>
+            {reasonValue && (
+              <div
+                style={{ fontSize: "12px", color: "#555", marginTop: "5px" }}
+              >
+                {reasonValue}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Actions",
@@ -259,17 +396,10 @@ const InternshipsList = () => {
             type="primary"
             icon={<EditOutlined />}
             onClick={() => openModal(record)}
-            size="middle"
           >
             Planifier
           </Button>
-          <Button
-            type="default"
-            onClick={() => handleFillPV(record)}
-            size="middle"
-          >
-            Remplir PV
-          </Button>
+          <Button onClick={() => handleOpenPvModal(record)}>Remplir PV</Button>
         </Space>
       ),
     },
@@ -277,13 +407,10 @@ const InternshipsList = () => {
 
   return (
     <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
-      <h2 style={{ marginBottom: "24px" }}>Assigned Subjects</h2>
+      <h2>Assigned Subjects</h2>
 
       {loading ? (
-        <div style={{ textAlign: "center", padding: "50px" }}>
-          <Spin size="large" />
-          <div style={{ marginTop: "20px" }}>Chargement des sujets...</div>
-        </div>
+        <Spin size="large" />
       ) : (
         <Table
           columns={columns}
@@ -291,77 +418,71 @@ const InternshipsList = () => {
           rowKey="sujetId"
           pagination={{ pageSize: 10 }}
           bordered
-          style={{ background: "#fff", borderRadius: "8px" }}
         />
       )}
 
-      {/* Modal pour planifier un rendez-vous (version Ant Design) */}
       <Modal
-        title={
-          <div>
-            Planifier un rendez-vous
-            {selectedTopic && (
-              <div style={{ fontSize: "14px", color: "#999" }}>
-                Sujet: {selectedTopic.sujetTitre}
-              </div>
-            )}
-          </div>
-        }
+        title={`Planifier un rendez-vous - ${selectedTopic?.sujetTitre || ""}`}
         open={showModal}
         onCancel={handleCloseModal}
-        footer={[
-          <Button key="cancel" onClick={handleCloseModal}>
-            Annuler
-          </Button>,
-          <Button key="submit" type="primary" onClick={handleSaveChanges}>
-            Enregistrer
-          </Button>,
-        ]}
-        width={600}
+        onOk={handleSaveChanges}
+        okText="Enregistrer"
+        cancelText="Annuler"
       >
-        {selectedTopic && (
-          <Form layout="vertical">
-            <Form.Item label="Date">
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </Form.Item>
+        <Form layout="vertical">
+          <Form.Item label="Date">
+            <Input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item label="Heure">
+            <Input
+              type="time"
+              value={horaire}
+              onChange={(e) => setHoraire(e.target.value)}
+            />
+          </Form.Item>
+          <Form.Item label="Lien Google Meet">
+            <Input
+              value={googleMeetLink}
+              onChange={(e) => setGoogleMeetLink(e.target.value)}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
-            <Form.Item label="Heure">
-              <Input
-                type="time"
-                value={horaire}
-                onChange={(e) => setHoraire(e.target.value)}
-              />
-            </Form.Item>
+      <Modal
+        title={`Remplir PV - ${selectedSujet?.sujetTitre || ""}`}
+        open={isPvModalVisible}
+        onCancel={() => setIsPvModalVisible(false)}
+        onOk={handleSubmitPv}
+        okText="Soumettre"
+        cancelText="Annuler"
+      >
+        <Form layout="vertical">
+          <Form.Item label="Validation">
+            <Radio.Group
+              value={isValidated}
+              onChange={(e) => setIsValidated(e.target.value)}
+            >
+              <Radio value={true}>Validé</Radio>
+              <Radio value={false}>Non validé</Radio>
+            </Radio.Group>
+          </Form.Item>
 
-            <Form.Item label="Lien Google Meet">
-              <Input
-                placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                value={googleMeetLink}
-                onChange={(e) => setGoogleMeetLink(e.target.value)}
+          {!isValidated && (
+            <Form.Item label="Raison">
+              <TextArea
+                rows={4}
+                value={pvContent}
+                onChange={(e) => setPvContent(e.target.value)}
+                placeholder="Indiquez la raison"
               />
             </Form.Item>
-
-            <Form.Item label="Étudiant">
-              <Input
-                value={selectedTopic?.studentName || "Non précisé"}
-                disabled
-                prefix={<UserOutlined />}
-              />
-            </Form.Item>
-
-            <Form.Item label="Email">
-              <Input
-                value={selectedTopic?.studentEmail || ""}
-                disabled
-                prefix={<MailOutlined />}
-              />
-            </Form.Item>
-          </Form>
-        )}
+          )}
+        </Form>
       </Modal>
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Card, Typography, Space, Button, Empty, Divider } from "antd";
+import { Card, Typography, Space, Button, Empty, Divider ,Tag} from "antd";
 import {
   ArrowLeftOutlined,
   CalendarOutlined,
@@ -9,15 +9,19 @@ import {
   FileTextOutlined,
   UserOutlined,
   MailOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined
 } from "@ant-design/icons";
 import { Spinner } from "react-bootstrap";
-import { getStudentInternshipDetails } from "services/internshipservicesstudent";
+import { getStudentInternshipDetails, getStudentPVDetails } from "services/internshipservicesstudent";
 
 const { Title, Text } = Typography;
 
 const TopicDetailsPage = () => {
   const navigate = useNavigate();
   const [internshipDetails, setInternshipDetails] = useState(null);
+    // Ajout de l'état pour les PV
+  const [pvDetails, setPvDetails] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,8 +31,28 @@ const TopicDetailsPage = () => {
   const loadInternshipDetails = async () => {
     try {
       setLoading(true);
-      const data = await getStudentInternshipDetails();
-      setInternshipDetails(data);
+      const [internshipData, pvData] = await Promise.all([
+        getStudentInternshipDetails(),
+        getStudentPVDetails(),
+
+      ]);
+      setInternshipDetails(internshipData);
+      console.log("PV data received:", pvData);
+      // Si nous avons des données de PV, trouver celui qui correspond au sujet courant
+      if (pvData && pvData.length > 0 && internshipData) {
+        const matchingPV = pvData.find(
+          (pv) => pv.sujetId === internshipData.sujetId
+        );
+        if (matchingPV) {
+          console.log("Found matching PV:", matchingPV);
+          setPvDetails(matchingPV);
+        } else {
+          console.log(
+            "No matching PV found for sujet:",
+            internshipData.sujetId
+          );
+        }
+      }
     } catch (error) {
       console.error("Erreur lors du chargement des détails du stage:", error);
     } finally {
@@ -56,9 +80,27 @@ const TopicDetailsPage = () => {
     );
   };
   // Fonction pour retourner à la liste des sujets
-const goBackToList = () => {
-  navigate("/internships/my-internships");
-};
+  const goBackToList = () => {
+    navigate("/internships/my-internships");
+  };
+  // Fonction pour afficher le statut du PV de manière plus visuelle
+  const renderPVStatus = (isValidated) => {
+    if (isValidated === true) {
+      return (
+        <Tag color="success" icon={<CheckCircleOutlined />}>
+          Validé
+        </Tag>
+      );
+    } else if (isValidated === false) {
+      return (
+        <Tag color="error" icon={<CloseCircleOutlined />}>
+          Non validé
+        </Tag>
+      );
+    } else {
+      return <Tag color="default">En attente</Tag>;
+    }
+  };
 
   return (
     <div style={{ padding: "24px", maxWidth: "800px", margin: "0 auto" }}>
@@ -175,10 +217,24 @@ const goBackToList = () => {
             }
             style={{ marginBottom: "24px", borderRadius: "8px" }}
           >
-            {internshipDetails.pv ? (
-              <div>
-                <Text>{internshipDetails.pv}</Text>
-              </div>
+            {pvDetails ? (
+              <Space direction="vertical" style={{ width: "100%" }}>
+                <div>
+                  <Space>
+                    <Text strong>Statut:</Text>
+                    {renderPVStatus(pvDetails.isValidated)}
+                  </Space>
+                </div>
+
+                {pvDetails.isValidated === false && (
+                  <div>
+                    <Space>
+                      <Text strong>Commentaire:</Text>
+                    </Space>
+                    <Text>{pvDetails.reason || "Aucun commentaire"}</Text>
+                  </div>
+                )}
+              </Space>
             ) : (
               <Empty
                 description="Aucun PV de soutenance disponible pour le moment"
