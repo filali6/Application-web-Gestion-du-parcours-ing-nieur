@@ -98,13 +98,18 @@ export const getSubjects = async (req, res) => {
     let query = { ...filter };
 
     if (role === "admin") {
-      // Admin sees everything, no extra filters
+      // Admin sees everything
     } else if (role === "teacher") {
-      // Teacher sees only published subjects assigned to them
+      // Teacher sees only their own published subjects
       query.assignedTeacher = userId;
       query.isPublished = true;
+
+      // Teacher-specific filters
+      const { level, semester } = req.query;
+      if (level) query.level = level;
+      if (semester) query.semester = semester;
     } else if (role === "student") {
-      // Student sees only published subjects assigned to them
+      // Student sees only their own published subjects
       query.assignedStudent = userId;
       query.isPublished = true;
     } else {
@@ -242,13 +247,16 @@ export const updateSubjectProgress = async (req, res) => {
 
     await Promise.all(notifications);
 
-    res.status(200).json({ message: "Progress updated and notifications sent." });
+    res
+      .status(200)
+      .json({ message: "Progress updated and notifications sent." });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "An error occurred while updating progress." });
+    res
+      .status(500)
+      .json({ error: "An error occurred while updating progress." });
   }
 };
-
 
 //evaluate subject
 export const addEvaluation = async (req, res) => {
@@ -600,7 +608,6 @@ export const sendEvaluationEmailsToStudent = async (req, res) => {
   }
 };
 
-
 //update subject
 
 export const updateSubject = async (req, res) => {
@@ -801,5 +808,28 @@ export const getStudentsByLevelAndOption = async (req, res) => {
   } catch (err) {
     console.error("Error fetching students by level/option:", err);
     res.status(500).json({ message: "Server error." });
+  }
+};
+
+////////////////// get subject by id /////////////////////////
+export const getSubjectById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const subject = await Subject.findById(id)
+      .populate("assignedTeacher", "firstName lastName email")
+      .populate("assignedStudent", "firstName lastName email")
+      .populate("propositions.submittedBy", "firstName lastName email");
+
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found." });
+    }
+
+    res.status(200).json({ subject });
+  } catch (error) {
+    console.error("Error fetching full subject:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching the subject." });
   }
 };

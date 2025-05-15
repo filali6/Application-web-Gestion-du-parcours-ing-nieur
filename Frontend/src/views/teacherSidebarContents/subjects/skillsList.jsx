@@ -10,7 +10,7 @@ const SkillsList = () => {
   const columns = [
     { key: "name", header: "Skill Name" },
     { key: "description", header: "Description" },
-    { key: "subjects", header: "Related Subjects" }
+    { key: "subjects", header: "Related Subjects" },
   ];
 
   const customRenderers = {
@@ -27,10 +27,8 @@ const SkillsList = () => {
           : description}
       </td>
     ),
-    subjects: (subjects) => {
-      // First ensure subjects is an array
-      const subjectsArray = Array.isArray(subjects) ? subjects : [];
-
+    subjects: (item) => {
+      const subjectsArray = Array.isArray(item.subjects) ? item.subjects : [];
       return (
         <td>
           <div className="subject-tags">
