@@ -206,3 +206,32 @@ export const updateCV = async (data, token) => {
     throw error;
   }
 };
+
+// Récupérer le profil complet (incluant la photo via l'URL)
+export const getMyProfile = async (token) => {
+  try {
+    const response = await axios.get(`${BASE_URL}/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    throw error;
+  }
+};
+
+// Mettre à jour le profil (avec photo si fournie)
+export const updateMyProfile = async (formData, token) => {
+  try {
+    const response = await axios.patch(`${BASE_URL}/me`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    throw error;
+  }
+};

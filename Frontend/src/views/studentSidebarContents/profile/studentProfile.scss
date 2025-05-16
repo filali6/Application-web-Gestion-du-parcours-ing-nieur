@@ -1,0 +1,271 @@
+.student-profile-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+  min-height: calc(100vh - 120px);
+  background-color: #f5f7fa;
+
+  $primary-color: #4361ee;
+  $error-color: #e53e3e;
+
+  .profile-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    max-width: 900px;
+    overflow: hidden;
+  }
+
+  .profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #eaeaea;
+    background-color: #f9fafb;
+
+    h2 {
+      margin: 0;
+      color: $primary-color;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .btn {
+      padding: 0.5rem 1.25rem;
+      font-size: 0.9rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: 1px solid transparent;
+
+      &-primary {
+        background-color: $primary-color;
+        border-color: $primary-color;
+        color: white;
+
+        &:hover {
+          background-color: darken($primary-color, 5%);
+        }
+
+        &:disabled {
+          background-color: lighten($primary-color, 20%);
+          cursor: not-allowed;
+        }
+      }
+
+      &-secondary {
+        background-color: white;
+        border-color: #ddd;
+        color: #555;
+
+        &:hover {
+          background-color: #f5f5f5;
+        }
+      }
+
+      &-outline {
+        background: transparent;
+        border: 1px solid $primary-color;
+        color: $primary-color;
+
+        &:hover {
+          background-color: rgba($primary-color, 0.1);
+        }
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+  }
+
+  .profile-body {
+    display: flex;
+    padding: 2rem;
+    gap: 3rem;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      gap: 2rem;
+      align-items: center;
+    }
+  }
+
+  .photo-section {
+    flex: 0 0 220px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+
+    .photo-container {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background-color: #f0f2f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+      .profile-photo {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .default-photo {
+        color: #a0aec0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+      }
+    }
+
+    .photo-upload-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+
+      .photo-upload {
+        #photo-upload {
+          display: none;
+        }
+
+        .btn-outline {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.5rem 1rem;
+          white-space: nowrap;
+        }
+      }
+
+      .file-name {
+        font-size: 0.8rem;
+        color: #4a5568;
+        text-align: center;
+        word-break: break-word;
+        max-width: 180px;
+      }
+    }
+  }
+
+  .info-section {
+    flex: 1;
+
+    .profile-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        label {
+          font-weight: 500;
+          color: #4a5568;
+          font-size: 0.95rem;
+        }
+
+        input, textarea {
+          padding: 0.75rem;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          font-size: 0.95rem;
+          transition: border-color 0.2s;
+          width: 100%;
+
+          &:focus {
+            outline: none;
+            border-color: $primary-color;
+            box-shadow: 0 0 0 2px rgba($primary-color, 0.2);
+          }
+        }
+
+        textarea {
+          min-height: 100px;
+          resize: vertical;
+        }
+
+        .read-only-field {
+          padding: 0.75rem;
+          background-color: #f8fafc;
+          border-radius: 6px;
+          color: #4a5568;
+        }
+
+        &.has-error {
+          input, textarea {
+            border-color: $error-color;
+          }
+        }
+
+        .error-message {
+          color: $error-color;
+          font-size: 0.85rem;
+          margin-top: 0.25rem;
+        }
+      }
+    }
+
+    .profile-details {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+
+      .detail-row {
+        display: flex;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #edf2f7;
+
+        &:last-child {
+          border-bottom: none;
+          padding-bottom: 0;
+        }
+
+        .detail-label {
+          flex: 0 0 120px;
+          font-weight: 500;
+          color: #4a5568;
+        }
+
+        .detail-value {
+          color: #2d3748;
+          flex: 1;
+
+          .empty-value {
+            color: #a0aec0;
+            font-style: italic;
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .student-profile-container {
+    padding: 1rem;
+
+    .profile-body {
+      padding: 1.5rem;
+    }
+
+    .profile-details .detail-row {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+  }
+}
