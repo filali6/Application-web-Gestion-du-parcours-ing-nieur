@@ -9,7 +9,7 @@ import {
   importStudents,
   decryptStudentPassword,
   updateProfile,
-  getStudentsPFA
+  getStudentsPFA,
 } from "../controllers/studentController.js";
 import { validateStudent } from "../middlewares/studentValidate.js";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";

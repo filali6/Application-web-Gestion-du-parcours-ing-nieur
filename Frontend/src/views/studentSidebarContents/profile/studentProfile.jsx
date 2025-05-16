@@ -1,9 +1,7 @@
-import React from 'react'
+import React from "react";
 
 function studentProfile() {
-  return (
-    <div>studentProfile</div>
-  )
+  return <div>studentProfile</div>;
 }
 
-export default studentProfile
+export default studentProfile;

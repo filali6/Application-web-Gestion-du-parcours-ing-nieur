@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 // import { Card, ListGroup, Dropdown } from 'react-bootstrap';
-import { ListGroup, Dropdown } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { ListGroup, Dropdown } from "react-bootstrap";
+import { Link } from "react-router-dom";
 // import PerfectScrollbar from 'react-perfect-scrollbar';
-import ChatList from './ChatList';
-import avatar1 from '../../../../assets/images/user/avatar-1.jpg';
+import ChatList from "./ChatList";
+import avatar1 from "../../../../assets/images/user/avatar-1.jpg";
 // import avatar2 from '../../../../assets/images/user/avatar-2.jpg';
 // import avatar3 from '../../../../assets/images/user/avatar-3.jpg';
 // import avatar4 from '../../../../assets/images/user/avatar-4.jpg';
-import { logout } from '../../../../services/auth.service';
-import { useAuth } from '../../../../contexts/AuthContext';
+import { logout } from "../../../../services/auth.service";
+import { useAuth } from "../../../../contexts/AuthContext";
 
 const NavRight = () => {
   const [listOpen, setListOpen] = useState(false);
@@ -39,12 +39,17 @@ const NavRight = () => {
   const handleLogout = () => {
     logout();
     setUser(null);
-    navigate('/auth/signin');
+    navigate("/auth/signin");
   };
 
   return (
     <React.Fragment>
-      <ListGroup as="ul" bsPrefix=" " className="navbar-nav ml-auto" id="navbar-right">
+      <ListGroup
+        as="ul"
+        bsPrefix=" "
+        className="navbar-nav ml-auto"
+        id="navbar-right"
+      >
         <ListGroup.Item as="li" bsPrefix=" ">
           {/* <Dropdown align="end">
             <Dropdown.Toggle as={Link} variant="link" to="#" id="dropdown-basic">
@@ -117,20 +122,35 @@ const NavRight = () => {
 
         <ListGroup.Item as="li" bsPrefix=" ">
           <Dropdown align="end" className="drp-user">
-            <Dropdown.Toggle as={Link} variant="link" to="#" id="dropdown-basic">
+            <Dropdown.Toggle
+              as={Link}
+              variant="link"
+              to="#"
+              id="dropdown-basic"
+            >
               <i className="icon feather icon-settings" />
             </Dropdown.Toggle>
             <Dropdown.Menu align="end" className="profile-notification">
               <div className="pro-head">
                 <img src={avatar1} className="img-radius" alt="User Profile" />
-                <span>{user?.name || 'Guest'}</span>
-                <Link to="#" className="dud-logout" title="Logout" onClick={handleLogout}>
+                <span>{user?.name || "Guest"}</span>
+                <Link
+                  to="#"
+                  className="dud-logout"
+                  title="Logout"
+                  onClick={handleLogout}
+                >
                   <i className="feather icon-log-out" />
                 </Link>
               </div>
-              <ListGroup as="ul" bsPrefix=" " variant="flush" className="pro-body">
+              <ListGroup
+                as="ul"
+                bsPrefix=" "
+                variant="flush"
+                className="pro-body"
+              >
                 <ListGroup.Item as="li" bsPrefix=" ">
-                  <Link to="/student/student-profile" className="dropdown-item">
+                  <Link to="#" className="dropdown-item">
                     <i className="feather icon-user" /> Profile
                   </Link>
                 </ListGroup.Item>
