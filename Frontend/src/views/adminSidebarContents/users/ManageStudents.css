@@ -1,0 +1,26 @@
+.custom-checkbox:checked {
+  accent-color: #ffd591 !important;
+  background-color: #ffd591 !important;
+  border-color: #ffd591 !important;
+}
+
+/* Fallback for older browsers */
+.custom-checkbox {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+.custom-checkbox:checked {
+  background-color: #ffd591;
+  border-color: #ffd591;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3E%3C/svg%3E");
+  background-size: cover;
+}

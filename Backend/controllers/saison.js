@@ -14,14 +14,21 @@ export const updateStudentStatus = async (req, res) => {
     // Vérifier que le statut est valide
     const validStatuses = ["redouble", "passe", "diplomé"];
     if (!validStatuses.includes(status)) {
-      return res.status(400).json({ message: "Statut invalide." });
+      return res.status(400).json({ message: "Invalid status." });
     }
 
     // Rechercher l'étudiant par ID
     const student = await Student.findById(studentId);
 
     if (!student) {
-      return res.status(404).json({ message: "Étudiant non trouvé." });
+      return res.status(404).json({ message: "Student not found." });
+    }
+
+    // Vérifier que l'étudiant est au niveau 3 pour le statut "diplomé"
+    if (status === "diplomé" && student.level !== 3) {
+      return res
+        .status(400)
+        .json({ message: "Student must be in level 3 to be graduated." });
     }
 
     // Mettre à jour le statut de l'étudiant
@@ -31,16 +38,16 @@ export const updateStudentStatus = async (req, res) => {
     await student.save();
 
     res.status(200).json({
-      message: "Statut mis à jour avec succès.",
+      message: "Status updated successfully.",
       student: {
         id: student._id,
         status: student.status,
       },
     });
   } catch (error) {
-    console.error("Erreur lors de la mise à jour du statut :", error);
+    console.error("Error updating status:", error);
     res.status(500).json({
-      message: "Erreur serveur lors de la mise à jour du statut.",
+      message: "Server error while updating status.",
     });
   }
 };
