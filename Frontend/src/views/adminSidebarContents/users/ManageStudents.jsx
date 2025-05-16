@@ -8,12 +8,14 @@ import {
   getStudentById,
   deleteStudent,
 } from "services/student";
+import { updateStudentStatus } from "services/saison";
 import Swal from "sweetalert2";
 import GenericList from "components/Generic/GenericList";
 import ManageIcons from "components/manageIcons/ManageIcons";
 import StudentForm from "components/form/StudentForm";
 import StudentUpdateForm from "components/form/StudentUpdateForm";
 import PasswordForm from "components/form/Password";
+import "./ManageStudents.css";
 
 const ManageStudents = () => {
   const [showForm, setShowForm] = useState(false);
@@ -22,10 +24,47 @@ const ManageStudents = () => {
   const fileInputRef = useRef(null);
   const [reloadTrigger, setReloadTrigger] = useState(Date.now());
 
+  // Status mapping: English (display) <-> French (backend)
+  const statusMapping = {
+    repeat: "redouble",
+    pass: "passe",
+    graduated: "diplomé",
+  };
+
+  // Reverse mapping for display (French -> English)
+  const reverseStatusMapping = Object.fromEntries(
+    Object.entries(statusMapping).map(([english, french]) => [french, english])
+  );
+
+  // Get English display status from French backend status
+  const getDisplayStatus = (backendStatus) =>
+    reverseStatusMapping[backendStatus] || backendStatus;
+
+  // Get French backend status from English display status
+  const getBackendStatus = (displayStatus) =>
+    statusMapping[displayStatus] || displayStatus;
+
+  // Translate backend message to English
+  const translateBackendMessage = (message) => {
+    if (message?.toLowerCase().includes("statut mis à jour avec succès")) {
+      return "Status updated successfully.";
+    }
+    if (
+      message
+        ?.toLowerCase()
+        .includes("student must be in level 3 to be graduated")
+    ) {
+      return "Student is not in level 3, they can't be graduated.";
+    }
+    return message || "Failed to update student status.";
+  };
+
   const stableFetchStudents = useCallback(
     async (filters, token) => {
       console.log("Calling fetchStudents with token:", token);
-      return await fetchStudents(filters, token);
+      // Add cache-busting query parameter
+      const cacheBuster = { ...filters, _t: Date.now() };
+      return await fetchStudents(cacheBuster, token);
     },
     [reloadTrigger]
   );
@@ -90,6 +129,67 @@ const ManageStudents = () => {
     }
 
     event.target.value = "";
+  };
+
+  const handleStatusChange = async (student, newDisplayStatus) => {
+    const token = localStorage.getItem("token");
+    const newBackendStatus = getBackendStatus(newDisplayStatus);
+
+    // Check if student is not in level 3 and status is "graduated"
+    if (newDisplayStatus === "graduated" && student.level !== 3) {
+      await Swal.fire({
+        title: "Error",
+        text: "Student is not in level 3, they can't be graduated.",
+        icon: "error",
+      });
+      return;
+    }
+
+    const confirmResult = await Swal.fire({
+      title: "Confirm Status Change",
+      text: `Are you sure you want to change ${student.firstName} ${student.lastName}'s status to "${newDisplayStatus.charAt(0).toUpperCase() + newDisplayStatus.slice(1)}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, change status",
+      cancelButtonText: "Cancel",
+    });
+
+    if (confirmResult.isConfirmed) {
+      try {
+        const result = await updateStudentStatus(
+          student._id,
+          newBackendStatus,
+          token
+        );
+
+        const translatedMessage = translateBackendMessage(result.message);
+
+        if (
+          result.message?.toLowerCase().includes("success") ||
+          result.message?.toLowerCase().includes("succès")
+        ) {
+          await Swal.fire({
+            title: "Success",
+            text: translatedMessage,
+            icon: "success",
+          });
+          setReloadTrigger(Date.now());
+        } else {
+          await Swal.fire({
+            title: "Error",
+            text: translatedMessage,
+            icon: "error",
+          });
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        await Swal.fire({
+          title: "Error",
+          text: "An unexpected error occurred while updating the status.",
+          icon: "error",
+        });
+      }
+    }
   };
 
   const handleActionClick = async (action, student) => {
@@ -308,6 +408,7 @@ const ManageStudents = () => {
           { key: "lastName", header: "Last Name" },
           { key: "email", header: "Email" },
           { key: "level", header: "Level" },
+          { key: "status", header: "Status" },
           {
             key: "cv",
             header: "CV",
@@ -329,6 +430,38 @@ const ManageStudents = () => {
               </button>
             </td>
           ),
+          status: (student) => (
+            <td key={`status-${student._id}`}>
+              <div style={{ display: "flex", gap: "10px" }}>
+                {["repeat", "pass", "graduated"].map((displayStatus) => (
+                  <label key={displayStatus}>
+                    <input
+                      type="checkbox"
+                      checked={
+                        getDisplayStatus(student.status) === displayStatus
+                      }
+                      onChange={() =>
+                        handleStatusChange(student, displayStatus)
+                      }
+                      disabled={
+                        getDisplayStatus(student.status) === displayStatus
+                      }
+                      className={
+                        getDisplayStatus(student.status) === displayStatus
+                          ? "custom-checkbox"
+                          : ""
+                      }
+                      style={{
+                        cursor: "pointer",
+                      }}
+                    />
+                    {displayStatus.charAt(0).toUpperCase() +
+                      displayStatus.slice(1)}
+                  </label>
+                ))}
+              </div>
+            </td>
+          ),
           actions: (student) => (
             <td key={`actions-${student._id}`}>
               <ManageIcons student={student} onAction={handleActionClick} />
@@ -340,4 +473,5 @@ const ManageStudents = () => {
     </div>
   );
 };
+
 export default ManageStudents;
