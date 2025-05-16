@@ -1,6 +1,6 @@
 const getMenuItems = () => {
-  const role = localStorage.getItem("role");
-
+  const role = localStorage.getItem('role');
+const level = localStorage.getItem('level');
   const adminPages = [
     {
       id: "manage-skills-subjects",
@@ -105,13 +105,17 @@ const getMenuItems = () => {
       icon: "feather icon-award",
       url: "/subjects/my-subjects-list",
     },
-    {
-      id: "student-pfa",
-      title: "My PFA",
-      type: "item",
-      icon: "feather icon-briefcase",
-      url: "/pfa/my-pfa",
-    },
+  ...(level === "2"
+      ? [
+          {
+            id: "student-pfa",
+            title: "My PFA",
+            type: "item",
+            icon: "feather icon-briefcase",
+            url: "/pfa/my-pfa",
+          },
+        ]
+      : []),
     {
       id: "student-internships",
       title: "My Internships",

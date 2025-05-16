@@ -15,6 +15,22 @@ const NavRight = () => {
   const [listOpen, setListOpen] = useState(false);
   const { user } = useAuth();
 
+
+  const getRoleInfo = () => {
+    switch (user?.role) {
+      case "student":
+        return { label: "🎓 Student of ISAMM University"};
+      case "teacher":
+        return { label: "🧑‍🏫 Teacher of ISAMM University" };
+      case "admin":
+        return { label: "🏛️ ISAMM Administrative" };
+      default:
+        return { label: "👤 Unknown Role"};
+    }
+  };
+
+    const roleInfo = getRoleInfo();
+
   // const notiData = [
   //   {
   //     name: 'Joseph William',
@@ -143,15 +159,10 @@ const NavRight = () => {
                   <i className="feather icon-log-out" />
                 </Link>
               </div>
-              <ListGroup
-                as="ul"
-                bsPrefix=" "
-                variant="flush"
-                className="pro-body"
-              >
+          <ListGroup as="ul" bsPrefix=" " variant="flush" className="pro-body">
                 <ListGroup.Item as="li" bsPrefix=" ">
                   <Link to="#" className="dropdown-item">
-                    <i className="feather icon-user" /> Profile
+                    <i className={roleInfo.icon} /> {roleInfo.label}
                   </Link>
                 </ListGroup.Item>
               </ListGroup>

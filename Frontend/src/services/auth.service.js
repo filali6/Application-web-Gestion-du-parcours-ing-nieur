@@ -39,6 +39,7 @@ export const loginUnified = async ({ identifier, password }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('role', decoded.role);
       localStorage.setItem('name', `${user.firstName} ${user.lastName}`);
+      localStorage.setItem('level', `${user.level}`);
       return res.data;
     }
   }
@@ -48,4 +49,5 @@ export const logout = () => {
   localStorage.removeItem('token');
   localStorage.removeItem('role');
   localStorage.removeItem('name');
+  localStorage.removeItem('level');
 };
