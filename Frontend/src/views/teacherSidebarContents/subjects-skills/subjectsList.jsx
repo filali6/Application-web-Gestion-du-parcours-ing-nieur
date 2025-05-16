@@ -23,7 +23,7 @@ const MySkillsSubjects = () => {
     { key: "actions", header: "Details" },
   ];
 
-    const handleFilterChange = (e) => {
+  const handleFilterChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
@@ -102,12 +102,11 @@ const MySkillsSubjects = () => {
                       as="select"
                     >
                       <option value="">All</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
+                      <option value="1st Semester">1st Semester</option>
+                      <option value="2nd Semester">2nd Semester</option>
                     </Form.Control>
                   </Form.Group>
                 </Col>
-
               </Row>
             </Form>
           </div>

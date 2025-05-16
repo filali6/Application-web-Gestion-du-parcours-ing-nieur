@@ -468,7 +468,7 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
                 <ListGroup>
                   {subjectData.evaluations.map((evalItem, index) => (
                     <ListGroup.Item key={index}>
-                      <div className="fw-bold">Score: {evalItem.score}/100</div>
+                      <div className="fw-bold">Score: {evalItem.score}/10</div>
                       <div className="mt-2">{evalItem.feedback}</div>
                     </ListGroup.Item>
                   ))}
