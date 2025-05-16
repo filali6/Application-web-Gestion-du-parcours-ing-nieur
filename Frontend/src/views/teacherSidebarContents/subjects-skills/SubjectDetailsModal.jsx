@@ -45,58 +45,101 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
   const calculateCompletionPercentage = () => {
     if (!subjectData.progress || !subjectData.curriculum.chapters) return 0;
 
-    // Count all possible items that can be completed
-    let totalItems = 0;
-    subjectData.curriculum.chapters.forEach((chapter) => {
-      // If the chapter has sections, count each section
-      if (chapter.sections && chapter.sections.length > 0) {
-        totalItems += chapter.sections.length;
-      } else {
-        // If the chapter has no sections, count the chapter itself
-        totalItems += 1;
+    // Count all chapters (regardless of sections)
+    const totalChapters = subjectData.curriculum.chapters.length;
+    if (totalChapters === 0) return 0;
+
+    // Count completed chapters
+    const completedChapters = subjectData.curriculum.chapters.filter(
+      (chapter) => {
+        return subjectData.progress.some(
+          (p) => p.title === chapter.title && !p.title.includes("-")
+        );
       }
-      // Also count the chapter itself as a separate item to complete
-      totalItems += 1;
-    });
+    ).length;
 
-    if (totalItems === 0) return 0;
+    // Calculate percentage based only on chapters
+    const percentage = Math.round((completedChapters / totalChapters) * 100);
+    return Math.min(percentage, 100); // Cap at 100%
+  };
 
-    // Count legitimately completed items, avoiding double counting
-    let completedItems = 0;
-    const progress = subjectData.progress || [];
+  // Add this helper function to check if previous items are completed
+  const isPreviousCompleted = (chapterIndex, sectionIndex = null) => {
+    const { progress = [], curriculum } = subjectData;
 
-    // Process each completed item in the progress array
-    subjectData.curriculum.chapters.forEach((chapter) => {
-      // Check if the chapter itself is completed
-      const isChapterCompleted = progress.some(
-        (p) => p.title === chapter.title && !p.title.includes("-")
+    // For chapters
+    if (sectionIndex === null) {
+      // First chapter can always be marked
+      if (chapterIndex === 0) return true;
+
+      // Check if previous chapter is completed
+      const prevChapter = curriculum.chapters[chapterIndex - 1];
+      const isPrevChapterCompleted = progress.some(
+        (p) => p.title === prevChapter.title && !p.title.includes("-")
       );
 
-      if (isChapterCompleted) {
-        completedItems += 1;
+      // For chapters with sections, ensure all sections are completed
+      if (prevChapter.sections?.length > 0) {
+        const allSectionsCompleted = prevChapter.sections.every((section) =>
+          progress.some((p) => p.title === `${prevChapter.title} - ${section}`)
+        );
+        return isPrevChapterCompleted && allSectionsCompleted;
       }
 
-      // Check each section's completion status
-      if (chapter.sections) {
-        chapter.sections.forEach((section) => {
-          const isSectionCompleted = progress.some(
-            (p) => p.title === `${chapter.title} - ${section}`
-          );
+      return isPrevChapterCompleted;
+    }
 
-          if (isSectionCompleted) {
-            completedItems += 1;
-          }
-        });
-      }
-    });
+    // For sections
+    if (sectionIndex === 0) {
+      // First section can be marked if chapter isn't completed yet
+      return !progress.some(
+        (p) => p.title === curriculum.chapters[chapterIndex].title
+      );
+    }
 
-    // Ensure we don't exceed 100%
-    const percentage = Math.round((completedItems / totalItems) * 100);
-    return Math.min(percentage, 100); // Cap at 100%
+    // Check if previous section is completed
+    const chapter = curriculum.chapters[chapterIndex];
+    const prevSection = chapter.sections[sectionIndex - 1];
+    return progress.some(
+      (p) => p.title === `${chapter.title} - ${prevSection}`
+    );
   };
 
   const markAsCompleted = async (chapterTitle, sectionText = null) => {
     try {
+      const chapterIndex = subjectData.curriculum.chapters.findIndex(
+        (ch) => ch.title === chapterTitle
+      );
+
+      const sectionIndex = sectionText
+        ? subjectData.curriculum.chapters[chapterIndex].sections.indexOf(
+            sectionText
+          )
+        : null;
+
+      // Check if previous items are completed
+      if (!isPreviousCompleted(chapterIndex, sectionIndex)) {
+        let errorMessage = "";
+
+        if (sectionText) {
+          errorMessage = "Please complete the previous section first.";
+        } else {
+          const prevChapter = subjectData.curriculum.chapters[chapterIndex - 1];
+          if (prevChapter.sections?.length > 0) {
+            errorMessage = `Please complete all sections in ${prevChapter.title} first.`;
+          } else {
+            errorMessage = `Please complete ${prevChapter.title} first.`;
+          }
+        }
+
+        await Swal.fire({
+          icon: "error",
+          title: "Cannot Mark as Completed",
+          text: errorMessage,
+          confirmButtonColor: "#3085d6",
+        });
+        return;
+      }
       const today = new Date().toISOString();
       const itemTitle = sectionText
         ? `${chapterTitle} - ${sectionText}`
@@ -324,7 +367,9 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
                           }
                           size="sm"
                           onClick={() => markAsCompleted(chapter.title)}
-                          disabled={isChapterCompleted}
+                          disabled={
+                            isChapterCompleted || !isPreviousCompleted(index)
+                          }
                         >
                           {isChapterCompleted ? (
                             <>
@@ -390,6 +435,12 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
                                       size="sm"
                                       onClick={() =>
                                         markAsCompleted(chapter.title, section)
+                                      }
+                                      disabled={
+                                        !isPreviousCompleted(
+                                          index,
+                                          chapter.sections.indexOf(section)
+                                        )
                                       }
                                     >
                                       Mark Complete

@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Button, Tab, Tabs, ListGroup, Badge } from "react-bootstrap";
-import { getSubjectProgress } from "../../../services/subjects.service";
+import { Modal, Button, Tab, Tabs, ListGroup, Badge, Form} from "react-bootstrap";
+import { getSubjectProgress, addSubjectEvaluation } from "../../../services/subjects.service";
 
 const SubjectDetailsModal = ({ subject, show, onHide }) => {
   const [progress, setProgress] = useState([]);
+  const [feedback, setFeedback] = useState("");
+  const [score, setScore] = useState(5);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (show && subject?._id) {
@@ -14,6 +19,17 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
         .catch((err) => {
           console.error("Error fetching progress:", err);
         });
+      // Check if student has already evaluated
+      if (subject.evaluations) {
+        // This is a frontend check only - server will verify again
+        setHasEvaluated(
+          subject.evaluations.some(
+            (evalItem) =>
+              evalItem.hashedStudentId ===
+              localStorage.getItem(`eval_${subject._id}`)
+          )
+        );
+      }
     }
   }, [show, subject]);
 
@@ -58,6 +74,29 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
 
     const percentage = Math.round((completedItems / totalItems) * 100);
     return Math.min(percentage, 100);
+  };
+  const handleSubmitEvaluation = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await addSubjectEvaluation(subject._id, {
+        feedback,
+        score,
+      });
+
+      // Store a flag in localStorage to prevent duplicate submissions
+      localStorage.setItem(`eval_${subject._id}`, "submitted");
+
+      setHasEvaluated(true);
+      // You might want to refresh the subject data here to show the new evaluation
+      onHide(); // Close the modal or handle as needed
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to submit evaluation");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Helper pour vérifier si un chapitre est complété
@@ -196,13 +235,50 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
                 <ListGroup>
                   {subject.evaluations.map((evalItem, index) => (
                     <ListGroup.Item key={index}>
-                      <div className="fw-bold">Score: {evalItem.score}/100</div>
+                      <div className="fw-bold">Score: {evalItem.score}/10</div>
                       <div className="mt-2">{evalItem.feedback}</div>
                     </ListGroup.Item>
                   ))}
                 </ListGroup>
               ) : (
                 <div className="text-muted">No evaluations yet.</div>
+              )}
+
+              {!hasEvaluated && (
+                <div className="mt-4">
+                  <h5>Submit Your Evaluation</h5>
+                  <Form onSubmit={handleSubmitEvaluation}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Score (0-10)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={score}
+                        onChange={(e) => setScore(parseInt(e.target.value))}
+                        required
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Feedback</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        required
+                      />
+                    </Form.Group>
+                    {error && <div className="text-danger mb-3">{error}</div>}
+                    <Button
+                      variant="primary"
+                      type="submit"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Evaluation"}
+                    </Button>
+                  </Form>
+                </div>
               )}
             </div>
           </Tab>
