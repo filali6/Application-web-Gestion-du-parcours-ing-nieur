@@ -633,3 +633,20 @@ export const updateProfile = async (req, res) => {
       .json({ message: "Erreur serveur lors de la mise à jour du profil." });
   }
 };
+
+// Pour GET /me (profil de l'étudiant connecté)
+export const getProfile = async (req, res) => {
+  try {
+    const student = await Student.findById(req.auth.userId).select(
+      "-password -encryptedPassword -__v"
+    ); // Exclut les champs sensibles
+
+    if (!student) {
+      return res.status(404).json({ message: "Étudiant non trouvé." });
+    }
+    res.status(200).json(student);
+  } catch (error) {
+    console.error("Erreur lors de la récupération du profil", error);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};

@@ -135,7 +135,9 @@ const routes = [
       },
       {
         path: "/internships/topic-status",
-        element: lazy(() => import("./views/adminSidebarContents/internships/topicStatus")),
+        element: lazy(
+          () => import("./views/adminSidebarContents/internships/topicStatus")
+        ),
       },
       {
         path: "/periode/manage-periode",
@@ -205,7 +207,6 @@ const routes = [
             import("./views/studentSidebarContents/internships/topicDetails")
         ),
       },
-
 
       {
         path: "/student/student-profile",
