@@ -83,10 +83,18 @@ export const deleteStudent = async (id, force = false, token) => {
     };
   }
 };
+
 //add student
 export const addStudent = async (studentData, token) => {
   try {
-    const response = await axios.post(BASE_URL, studentData, {
+    // Create a new object excluding affectedOption if it's empty
+    const { affectedOption, ...restData } = studentData;
+    const payload = {
+      ...restData,
+      ...(affectedOption && { affectedOption }), // Only include affectedOption if it has a value
+    };
+
+    const response = await axios.post(BASE_URL, payload, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

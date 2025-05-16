@@ -136,6 +136,7 @@ export const studentValidationSchema = Joi.object({
     "number.base": "La note doit être un nombre.",
   }),
   chosenOption: Joi.string().optional(),
+  affectedOption: Joi.string().optional(),
   integrationYear: Joi.string().optional(),
   group: Joi.string().optional(),
   isRepeaterInFirstYear: Joi.boolean().optional(),

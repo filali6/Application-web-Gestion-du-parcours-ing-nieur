@@ -36,13 +36,16 @@ const validationSchema = Yup.object().shape({
     .required("Last name is required"),
   dateOfBirth: Yup.date()
     .max(new Date(), "Date of birth cannot be in the future")
-    .required("Date of birth is required"), // Changé de optional() à required()
+    .required("Date of birth is required"),
   gender: Yup.string()
     .oneOf(["Male", "Female"], "Please select a gender")
-    .required("Gender is required"), // Changé de optional() à required()
+    .required("Gender is required"),
   level: Yup.string()
     .oneOf(["1", "2", "3"], "Please select a level")
-    .required("Level is required"), // Changé de optional() à required()
+    .required("Level is required"),
+  affectedOption: Yup.string()
+    .oneOf(["inLog", "inRev", ""], "Invalid option")
+    .optional(),
 });
 
 const initialValues = {
@@ -53,6 +56,7 @@ const initialValues = {
   dateOfBirth: null,
   gender: "",
   level: "",
+  affectedOption: "",
 };
 
 const StudentForm = ({ onSuccess, onCancel }) => {
@@ -63,13 +67,11 @@ const StudentForm = ({ onSuccess, onCancel }) => {
     try {
       const response = await addStudent(values, token);
 
-      // Vérification du champ 'student' dans la réponse pour détecter un ajout réussi
       if (response?.student?._id) {
         await Swal.fire("Success", "Student added successfully!", "success");
         resetForm();
         onSuccess();
       } else {
-        // Traitement des messages d'erreur basés sur la réponse du backend
         const errorMessage = response?.message?.toLowerCase();
         if (errorMessage?.includes("le cin existe déjà")) {
           Swal.fire("CIN already exists.", "error");
@@ -369,6 +371,54 @@ const StudentForm = ({ onSuccess, onCancel }) => {
                     </Grid>
                   </Grid>
                 </Grid>
+
+                {/* Affected Option Field */}
+                <Grid item xs={12}>
+                  <Grid container alignItems="center" spacing={1}>
+                    <Grid item xs={4}>
+                      <Typography variant="body2" mr="36px">
+                        Option:
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={8}>
+                      <FormControl
+                        fullWidth
+                        size="small"
+                        error={
+                          touched.affectedOption &&
+                          Boolean(errors.affectedOption)
+                        }
+                      >
+                        <Select
+                          name="affectedOption"
+                          value={values.affectedOption}
+                          onChange={handleChange}
+                          sx={{
+                            backgroundColor: "#f9f9f9",
+                            borderRadius: "4px",
+                            border: "1px solid #f1f1f1",
+                            height: "36px",
+                            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#d4e8e8 !important",
+                              boxShadow: "0 0 0 2px rgba(237, 255, 255, 0.5)",
+                            },
+                          }}
+                        >
+                          <MenuItem value="inLog">inLog</MenuItem>
+                          <MenuItem value="inRev">inRev</MenuItem>
+                        </Select>
+                        {touched.affectedOption && errors.affectedOption && (
+                          <Typography color="error" variant="caption">
+                            {errors.affectedOption}
+                          </Typography>
+                        )}
+                      </FormControl>
+                    </Grid>
+                  </Grid>
+                </Grid>
+
+                {/* Spacing */}
+                <Grid item xs={12} sx={{ height: "16px" }} />
 
                 {/* Buttons */}
                 <Grid item xs={12}>
