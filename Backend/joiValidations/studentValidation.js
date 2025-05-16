@@ -141,8 +141,4 @@ export const studentValidationSchema = Joi.object({
   isRepeaterInFirstYear: Joi.boolean().optional(),
   year: Joi.number().optional(),
   status: Joi.string().optional(),
-
-  additionalEmail: Joi.string().email().optional().messages({
-    "string.email": "L'email n'est pas valide.",
-  }),
 });

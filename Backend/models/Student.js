@@ -62,11 +62,6 @@ const studentSchema = mongoose.Schema({
       status: { type: String },
     },
   ],
-
-  additionalEmail: {
-    type: String,
-    required: false,
-  },
 });
 
 export default mongoose.model("Student", studentSchema);
