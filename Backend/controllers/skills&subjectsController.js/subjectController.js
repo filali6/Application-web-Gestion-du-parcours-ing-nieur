@@ -97,9 +97,9 @@ export const getSubjects = async (req, res) => {
 
     let query = { ...filter };
 
-      const { level, semester } = req.query;
-      if (level) query.level = level;
-      if (semester) query.semester = semester;
+    const { level, semester } = req.query;
+    if (level) query.level = level;
+    if (semester) query.semester = semester;
 
     if (role === "admin") {
       // Admin sees everything
@@ -107,12 +107,10 @@ export const getSubjects = async (req, res) => {
       // Teacher sees only their own published subjects
       query.assignedTeacher = userId;
       query.isPublished = true;
-
     } else if (role === "student") {
       // Student sees only their own published subjects
       query.assignedStudent = userId;
       query.isPublished = true;
-      
     } else {
       return res.status(403).json({ error: "Access denied." });
     }
@@ -242,6 +240,7 @@ export const updateSubjectProgress = async (req, res) => {
           email: student.email,
           subject: `Progress Updated: ${subject.title}`,
           htmlContent: emailContent,
+          attachments: COMMON_ATTACHMENTS,
         })
       );
     });
@@ -474,6 +473,7 @@ export const validateProposition = async (req, res) => {
         level: subject.level,
         semester: subject.semester,
         curriculum: { ...subject.curriculum }, // Deep clone to preserve old state
+        progress: [...subject.progress], // Save current progress in history
       },
       reason: latestProposition.reason || "No reason provided",
       submittedBy: latestProposition.submittedBy,
@@ -486,6 +486,7 @@ export const validateProposition = async (req, res) => {
     subject.semester = latestProposition.changes.semester || subject.semester;
     subject.curriculum =
       latestProposition.changes.curriculum || subject.curriculum;
+    subject.progress = []; // Empty the progress array completely
 
     // Remove all propositions after validating
     subject.propositions = [];
@@ -834,8 +835,6 @@ export const getSubjectById = async (req, res) => {
       .json({ error: "An error occurred while fetching the subject." });
   }
 };
-
-
 
 /////////////// get progress for stuener /////////////////////////////////
 export const getSubjectProgress = async (req, res) => {

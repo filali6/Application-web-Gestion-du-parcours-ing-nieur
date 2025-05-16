@@ -1,9 +1,28 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Button, Tab, Tabs, ListGroup, Badge } from "react-bootstrap";
-import { getSubjectProgress } from "../../../services/subjects.service";
+import {
+  Modal,
+  Button,
+  Tab,
+  Tabs,
+  ListGroup,
+  Badge,
+  Form,
+} from "react-bootstrap";
+import {
+  getSubjectProgress,
+  addSubjectEvaluation,
+} from "../../../services/subjects.service";
+
+import Swal from "sweetalert2";
 
 const SubjectDetailsModal = ({ subject, show, onHide }) => {
   const [progress, setProgress] = useState([]);
+  const [feedback, setFeedback] = useState("");
+  const [score, setScore] = useState(5);
+  const [hasEvaluated, setHasEvaluated] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeTab, setActiveTab] = useState("curriculum");
 
   useEffect(() => {
     if (show && subject?._id) {
@@ -14,8 +33,24 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
         .catch((err) => {
           console.error("Error fetching progress:", err);
         });
+
+      // Check if student has already evaluated
+      const localStorageCheck = localStorage.getItem(`eval_${subject._id}`);
+      setHasEvaluated(!!localStorageCheck);
     }
   }, [show, subject]);
+
+  const handleTabSelect = (tab) => {
+    setActiveTab(tab);
+    if (tab === "evaluations" && hasEvaluated) {
+      Swal.fire({
+        title: "Evaluation Submitted",
+        text: "You have already submitted your evaluation for this subject.",
+        icon: "info",
+        confirmButtonText: "OK",
+      });
+    }
+  };
 
   // Calcule le pourcentage global de complétion
   const calculateCompletionPercentage = () => {
@@ -59,6 +94,40 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
     const percentage = Math.round((completedItems / totalItems) * 100);
     return Math.min(percentage, 100);
   };
+  const handleSubmitEvaluation = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await addSubjectEvaluation(subject._id, {
+        feedback,
+        score,
+      });
+
+      localStorage.setItem(`eval_${subject._id}`, "submitted");
+      setHasEvaluated(true);
+
+      Swal.fire({
+        title: "Thank You!",
+        text: "Your evaluation has been submitted successfully.",
+        icon: "success",
+        confirmButtonText: "OK",
+      }).then(() => {
+        onHide();
+      });
+    } catch (err) {
+      setError(err.response?.data?.error || "Failed to submit evaluation");
+      Swal.fire({
+        title: "Error",
+        text: err.response?.data?.error || "Failed to submit evaluation",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Helper pour vérifier si un chapitre est complété
   const isChapterCompleted = (chapterTitle) => {
@@ -88,7 +157,11 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
         <Modal.Title>{subject.title}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Tabs defaultActiveKey="curriculum" className="mb-3">
+        <Tabs
+          defaultActiveKey="curriculum"
+          className="mb-3"
+          onSelect={handleTabSelect}
+        >
           <Tab eventKey="curriculum" title="Curriculum">
             <div className="mb-4">
               <div className="d-flex justify-content-between align-items-center mb-2">
@@ -192,18 +265,43 @@ const SubjectDetailsModal = ({ subject, show, onHide }) => {
 
           <Tab eventKey="evaluations" title="Evaluations">
             <div className="mt-3">
-              {subject.evaluations && subject.evaluations.length > 0 ? (
-                <ListGroup>
-                  {subject.evaluations.map((evalItem, index) => (
-                    <ListGroup.Item key={index}>
-                      <div className="fw-bold">Score: {evalItem.score}/100</div>
-                      <div className="mt-2">{evalItem.feedback}</div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              ) : (
-                <div className="text-muted">No evaluations yet.</div>
-              )}
+              {!hasEvaluated ? (
+                <div>
+                  <h5>Submit Your Evaluation</h5>
+                  <Form onSubmit={handleSubmitEvaluation}>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Score (0-10)</Form.Label>
+                      <Form.Control
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={score}
+                        onChange={(e) => setScore(parseInt(e.target.value))}
+                        required
+                      />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                      <Form.Label>Feedback</Form.Label>
+                      <Form.Control
+                        as="textarea"
+                        rows={3}
+                        value={feedback}
+                        onChange={(e) => setFeedback(e.target.value)}
+                        required
+                        placeholder="What did you like about this course? What could be improved?"
+                      />
+                    </Form.Group>
+                    {error && <div className="alert alert-danger">{error}</div>}
+                    <Button
+                      variant="primary"
+                      type="submit"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Submitting..." : "Submit Evaluation"}
+                    </Button>
+                  </Form>
+                </div>
+              ) : null}
             </div>
           </Tab>
         </Tabs>
