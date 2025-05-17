@@ -145,6 +145,16 @@ const routes = [
           () => import("./views/adminSidebarContents/periode/ManagePeriode")
         ),
       },
+      {
+        exact: "true",
+        path: "/academic-year/manage-academic-year",
+        element: lazy(
+          () =>
+            import(
+              "./views/adminSidebarContents/academicYear/ManageAcademicYear"
+            )
+        ),
+      },
       // 🔽 Teacher-specific routes //
       {
         path: "/student/students-list",
@@ -178,8 +188,7 @@ const routes = [
       {
         path: "/subjects/my-subjects-list",
         element: lazy(
-          () =>
-            import("./views/studentSidebarContents/subjects/mySubjects")
+          () => import("./views/studentSidebarContents/subjects/mySubjects")
         ),
       },
       {
