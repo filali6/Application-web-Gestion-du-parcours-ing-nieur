@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import Button from "components/button/Button";
 import { MdAddCircleOutline, MdOutlineInsertDriveFile } from "react-icons/md";
 import {
@@ -7,12 +7,14 @@ import {
   getTeacherById,
   deleteTeacher,
 } from "services/teacher";
+import { fetchAvailableYears } from "services/saison";
 import Swal from "sweetalert2";
 import GenericList from "components/Generic/GenericList";
 import ManageIconsTeacher from "components/manageIcons/ManageIconsTeacher";
 import TeacherForm from "components/form/TeacherForm";
 import TeacherUpdateForm from "components/form/TeacherUpdateForm";
 import PasswordTeacher from "components/form/PasswordTeacher";
+import { Form, Row, Col } from "react-bootstrap";
 
 const ManageTeachers = () => {
   const [showForm, setShowForm] = useState(false);
@@ -20,10 +22,26 @@ const ManageTeachers = () => {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const fileInputRef = useRef(null);
   const [reloadTrigger, setReloadTrigger] = useState(Date.now());
+  const [availableYears, setAvailableYears] = useState([]);
+
+  // Fetch available years on component mount and when reloadTrigger changes
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const loadYears = async () => {
+      const years = await fetchAvailableYears(token);
+      setAvailableYears(years);
+    };
+    loadYears();
+  }, [reloadTrigger]);
 
   const stableFetchTeachers = useCallback(
     async (filters, token) => {
-      console.log("Calling Teachers with token:", token);
+      console.log(
+        "Calling fetchTeachers with filters:",
+        filters,
+        "token:",
+        token
+      );
       return await fetchTeachers(filters, token);
     },
     [reloadTrigger]
@@ -42,7 +60,6 @@ const ManageTeachers = () => {
     try {
       const result = await importTeachers(file, token);
 
-      // Cas mixte (erreurs + succès)
       if (result?.errors?.length > 0 && result?.imported > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
@@ -62,9 +79,7 @@ const ManageTeachers = () => {
           icon: "warning",
         });
         setReloadTrigger(Date.now());
-      }
-      // Erreurs seulement
-      else if (result?.errors?.length > 0) {
+      } else if (result?.errors?.length > 0) {
         const errorMessages = result.errors
           .map((error) => `CIN: ${error.cin} - ${error.message}`)
           .join("\n");
@@ -74,9 +89,7 @@ const ManageTeachers = () => {
           text: errorMessages,
           icon: "error",
         });
-      }
-      // Succès seulement
-      else if (result?.imported > 0) {
+      } else if (result?.imported > 0) {
         await Swal.fire(
           "Success",
           `Successfully imported ${result.imported} teacher(s).`,
@@ -120,7 +133,6 @@ const ManageTeachers = () => {
             .map(([key, value]) => {
               let displayValue = value ?? "Not specified";
 
-              // Handle 'history' field, display 'Not specified' if it's an empty array
               if (key === "history") {
                 if (Array.isArray(value) && value.length > 0) {
                   displayValue = value
@@ -184,7 +196,6 @@ const ManageTeachers = () => {
               result.message?.toLowerCase().includes("relation") ||
               result.message?.toLowerCase().includes("lié")
             ) {
-              // Deuxième alerte pour la suppression forcée
               const forceResult = await Swal.fire({
                 title: "Teacher has related data",
                 text: "Teacher has relations with other entities. Do you want to force delete?",
@@ -233,6 +244,30 @@ const ManageTeachers = () => {
     }
   };
 
+  const renderYearFilter = (handleFilterChange) => (
+    <Form.Group as={Row} className="mb-0 me-3">
+      <Col xs="auto">
+        <Form.Select
+          onChange={(e) => {
+            const year = e.target.value;
+            handleFilterChange("annee", year);
+            handleFilterChange(
+              "inHistory",
+              year < new Date().getFullYear() + 1 ? "true" : "false"
+            );
+          }}
+        >
+          <option value="">Select Year</option>
+          {availableYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </Form.Select>
+      </Col>
+    </Form.Group>
+  );
+
   return (
     <div className="page-container">
       <div className="buttons-container">
@@ -268,7 +303,7 @@ const ManageTeachers = () => {
           onSuccess={() => {
             setShowForm(false);
             setCurrentTeacher(null);
-            setReloadTrigger(Date.now()); // Force reload
+            setReloadTrigger(Date.now());
           }}
           onCancel={() => {
             setShowForm(false);
@@ -309,15 +344,21 @@ const ManageTeachers = () => {
       <GenericList
         title="Teachers list"
         fetchItems={stableFetchTeachers}
-        reloadKey={reloadTrigger} // Ceci déclenchera le rechargement quand reloadTrigger change
+        reloadKey={reloadTrigger}
         columns={[
           { key: "cin", header: "CIN" },
           { key: "firstName", header: "First Name" },
           { key: "lastName", header: "Last Name" },
           { key: "email", header: "Email" },
+          { key: "grade", header: "Grade" },
           { key: "actions", header: "Actions" },
         ]}
         customRenderers={{
+          grade: (teacher) => (
+            <td key={`grade-${teacher._id}`}>
+              {teacher.grade !== null ? teacher.grade : "Not specified"}
+            </td>
+          ),
           actions: (teacher) => (
             <td key={`actions-${teacher._id}`}>
               <ManageIconsTeacher
@@ -328,6 +369,7 @@ const ManageTeachers = () => {
           ),
         }}
         searchFields={["cin", "firstName", "lastName", "email"]}
+        additionalFilters={renderYearFilter}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import Button from "components/button/Button";
 import { MdAddCircleOutline, MdOutlineInsertDriveFile } from "react-icons/md";
 import { FiFileText } from "react-icons/fi";
@@ -8,13 +8,14 @@ import {
   getStudentById,
   deleteStudent,
 } from "services/student";
-import { updateStudentStatus } from "services/saison";
+import { updateStudentStatus, fetchAvailableYears } from "services/saison";
 import Swal from "sweetalert2";
 import GenericList from "components/Generic/GenericList";
 import ManageIcons from "components/manageIcons/ManageIcons";
 import StudentForm from "components/form/StudentForm";
 import StudentUpdateForm from "components/form/StudentUpdateForm";
 import PasswordForm from "components/form/Password";
+import { Form, Row, Col } from "react-bootstrap";
 import "./ManageStudents.css";
 
 const ManageStudents = () => {
@@ -23,6 +24,17 @@ const ManageStudents = () => {
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const fileInputRef = useRef(null);
   const [reloadTrigger, setReloadTrigger] = useState(Date.now());
+  const [availableYears, setAvailableYears] = useState([]);
+
+  // Fetch available years on component mount and when reloadTrigger changes
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const loadYears = async () => {
+      const years = await fetchAvailableYears(token);
+      setAvailableYears(years);
+    };
+    loadYears();
+  }, [reloadTrigger]);
 
   // Status mapping: English (display) <-> French (backend)
   const statusMapping = {
@@ -31,20 +43,16 @@ const ManageStudents = () => {
     graduated: "diplomé",
   };
 
-  // Reverse mapping for display (French -> English)
   const reverseStatusMapping = Object.fromEntries(
     Object.entries(statusMapping).map(([english, french]) => [french, english])
   );
 
-  // Get English display status from French backend status
   const getDisplayStatus = (backendStatus) =>
-    reverseStatusMapping[backendStatus] || backendStatus;
+    reverseStatusMapping[backendStatus] || backendStatus || "Not specified";
 
-  // Get French backend status from English display status
   const getBackendStatus = (displayStatus) =>
     statusMapping[displayStatus] || displayStatus;
 
-  // Translate backend message to English
   const translateBackendMessage = (message) => {
     if (message?.toLowerCase().includes("statut mis à jour avec succès")) {
       return "Status updated successfully.";
@@ -61,10 +69,13 @@ const ManageStudents = () => {
 
   const stableFetchStudents = useCallback(
     async (filters, token) => {
-      console.log("Calling fetchStudents with token:", token);
-      // Add cache-busting query parameter
-      const cacheBuster = { ...filters, _t: Date.now() };
-      return await fetchStudents(cacheBuster, token);
+      console.log(
+        "Calling fetchStudents with filters:",
+        filters,
+        "token:",
+        token
+      );
+      return await fetchStudents(filters, token);
     },
     [reloadTrigger]
   );
@@ -103,7 +114,9 @@ const ManageStudents = () => {
         setReloadTrigger(Date.now());
       } else if (result?.errors?.length > 0) {
         const errorMessages = result.errors
-          .map((error) => `CIN: ${error.cin} - ${error.message}`)
+          .map((error) => {
+            return `CIN: ${error.cin} - ${error.message}`;
+          })
           .join("\n");
 
         await Swal.fire({
@@ -135,7 +148,6 @@ const ManageStudents = () => {
     const token = localStorage.getItem("token");
     const newBackendStatus = getBackendStatus(newDisplayStatus);
 
-    // Check if student is not in level 3 and status is "graduated"
     if (newDisplayStatus === "graduated" && student.level !== 3) {
       await Swal.fire({
         title: "Error",
@@ -326,6 +338,30 @@ const ManageStudents = () => {
     }
   };
 
+  const renderYearFilter = (handleFilterChange) => (
+    <Form.Group as={Row} className="mb-0 me-3">
+      <Col xs="auto">
+        <Form.Select
+          onChange={(e) => {
+            const year = e.target.value;
+            handleFilterChange("annee", year);
+            handleFilterChange(
+              "inHistory",
+              year < new Date().getFullYear() + 1 ? "true" : "false"
+            );
+          }}
+        >
+          <option value="">Select Year</option>
+          {availableYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </Form.Select>
+      </Col>
+    </Form.Group>
+  );
+
   return (
     <div className="page-container">
       <div className="buttons-container">
@@ -417,17 +453,9 @@ const ManageStudents = () => {
           { key: "actions", header: "Actions" },
         ]}
         customRenderers={{
-          cv: (student) => (
-            <td key={`cv-${student._id}`} className="text-center">
-              <button
-                className="btn btn-sm btn-outline-primary"
-                onClick={() =>
-                  window.open(`/students/${student._id}/cv`, "_blank")
-                }
-                title="View CV"
-              >
-                <FiFileText />
-              </button>
+          level: (student) => (
+            <td key={`level-${student._id}`}>
+              {student.level !== null ? student.level : "Not specified"}
             </td>
           ),
           status: (student) => (
@@ -462,6 +490,19 @@ const ManageStudents = () => {
               </div>
             </td>
           ),
+          cv: (student) => (
+            <td key={`cv-${student._id}`} className="text-center">
+              <button
+                className="btn btn-sm btn-outline-primary"
+                onClick={() =>
+                  window.open(`/students/${student._id}/cv`, "_blank")
+                }
+                title="View CV"
+              >
+                <FiFileText />
+              </button>
+            </td>
+          ),
           actions: (student) => (
             <td key={`actions-${student._id}`}>
               <ManageIcons student={student} onAction={handleActionClick} />
@@ -469,6 +510,7 @@ const ManageStudents = () => {
           ),
         }}
         searchFields={["cin", "firstName", "lastName", "email"]}
+        additionalFilters={renderYearFilter}
       />
     </div>
   );

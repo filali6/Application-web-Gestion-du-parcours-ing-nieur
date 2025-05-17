@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:5000/students";
 
-//  Fonction pour récupérer les étudiants
+// Fonction pour récupérer les étudiants
 export const fetchStudents = async (filters = {}, token) => {
   if (!token) {
     console.error("No token provided.");
@@ -12,8 +12,24 @@ export const fetchStudents = async (filters = {}, token) => {
   try {
     const response = await axios.get(BASE_URL, {
       headers: { Authorization: `Bearer ${token}` },
-      params: filters,
+      params: { ...filters, _t: Date.now() }, // Cache-busting
     });
+
+    // Normaliser les données en fonction de inHistory
+    const { annee, inHistory } = filters;
+    if (annee && inHistory === "true") {
+      return response.data.map((student) => {
+        const historyEntry = student.history?.find(
+          (h) => h.year === Number(annee)
+        );
+        return {
+          ...student,
+          level: historyEntry ? historyEntry.level : null,
+          status: historyEntry ? historyEntry.status : null,
+          year: Number(annee), // Afficher l'année sélectionnée
+        };
+      });
+    }
     return response.data;
   } catch (error) {
     console.error("Error in fetchStudents:", error);
@@ -21,7 +37,7 @@ export const fetchStudents = async (filters = {}, token) => {
   }
 };
 
-//  Fonction pour importer des étudiants via un fichier Excel
+// Fonction pour importer des étudiants via un fichier Excel
 export const importStudents = async (file, token) => {
   if (!file || !token) {
     console.error("File or token is missing.");

@@ -1,6 +1,6 @@
 const getMenuItems = () => {
-  const role = localStorage.getItem('role');
-const level = localStorage.getItem('level');
+  const role = localStorage.getItem("role");
+  const level = localStorage.getItem("level");
   const adminPages = [
     {
       id: "manage-skills-subjects",
@@ -65,6 +65,14 @@ const level = localStorage.getItem('level');
       url: "/periode/manage-periode",
       icon: "feather icon-calendar",
     },
+    {
+      id: "manage-academic-year",
+      title: "Manage Academic Year",
+      type: "item",
+      url: "/academic-year/manage-academic-year",
+      classes: "nav-item",
+      icon: "feather icon-calendar",
+    },
   ];
 
   const teacherPages = [
@@ -105,7 +113,7 @@ const level = localStorage.getItem('level');
       icon: "feather icon-award",
       url: "/subjects/my-subjects-list",
     },
-  ...(level === "2"
+    ...(level === "2"
       ? [
           {
             id: "student-pfa",

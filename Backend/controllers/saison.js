@@ -1,40 +1,30 @@
 import Student from "../models/Student.js";
 import Subject from "../models/Subject&Skill/Subject.js";
-import Skill from "../models/Subject&Skill/Skill.js";
 import Teacher from "../models/Teacher.js";
+import mongoose from "mongoose";
 
 export const updateStudentStatus = async (req, res) => {
   try {
-    // Récupérer l'ID de l'étudiant depuis l'URL
     const studentId = req.params.id;
-
-    // Récupérer le nouveau statut depuis le corps de la requête
     const { status } = req.body;
 
-    // Vérifier que le statut est valide
     const validStatuses = ["redouble", "passe", "diplomé"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status." });
     }
 
-    // Rechercher l'étudiant par ID
     const student = await Student.findById(studentId);
-
     if (!student) {
       return res.status(404).json({ message: "Student not found." });
     }
 
-    // Vérifier que l'étudiant est au niveau 3 pour le statut "diplomé"
     if (status === "diplomé" && student.level !== 3) {
       return res
         .status(400)
         .json({ message: "Student must be in level 3 to be graduated." });
     }
 
-    // Mettre à jour le statut de l'étudiant
     student.status = status;
-
-    // Sauvegarder les modifications
     await student.save();
 
     res.status(200).json({
@@ -45,9 +35,10 @@ export const updateStudentStatus = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error updating status:", error);
+    console.error("Error updating status:", error.message, error.stack);
     res.status(500).json({
       message: "Server error while updating status.",
+      error: error.message,
     });
   }
 };
@@ -56,7 +47,6 @@ export const createNewYear = async (req, res) => {
   try {
     const { year } = req.body;
 
-    // Validation de l'année
     if (!year || typeof year !== "number") {
       return res
         .status(400)
@@ -64,9 +54,9 @@ export const createNewYear = async (req, res) => {
     }
 
     const currentYear = new Date().getFullYear();
-    if (year > currentYear + 1) {
+    if (year !== currentYear + 3) {
       return res.status(400).json({
-        message: "L'année ne peut pas être supérieure à l'année actuelle + 1.",
+        message: "L'année doit être exactement l'année actuelle + 1.",
       });
     }
 
@@ -77,7 +67,7 @@ export const createNewYear = async (req, res) => {
 
     const studentsWithoutStatus = await Student.find({
       level: { $in: [1, 2] },
-      $or: [{ status: { $exists: false } }, { status: null }],
+      status: { $in: [null, undefined] },
     });
 
     if (studentsWithoutStatus.length > 0) {
@@ -88,48 +78,52 @@ export const createNewYear = async (req, res) => {
       });
     }
 
-    // Mise à jour des étudiants
     const students = await Student.find();
-
     await Promise.all(
       students.map(async (student) => {
-        // Ignorer les étudiants "diplômés"
-        if (student.status === "diplomé") {
-          return; // Passer à l'étudiant suivant
-        }
+        const previousLevel = student.level || 1;
+        const previousStatus = student.status || "pending";
+        const previousYear = student.year || currentYear;
 
-        // Ajouter les données actuelles dans l'historique uniquement pour les étudiants non diplômés
+        student.history = student.history || [];
+        student.history.push({
+          year: previousYear,
+          level: previousLevel,
+          status: previousStatus,
+          successSession: student.successSession || null,
+        });
+
+        student.year = year;
         if (student.status !== "diplomé") {
-          student.history.push({
-            year: student.year,
-            level: student.level,
-            status: student.status,
-          });
+          if (student.status === "redouble") {
+            // Level remains the same
+          } else if (
+            student.status === "passe" &&
+            (previousLevel === 1 || previousLevel === 2)
+          ) {
+            student.level = previousLevel + 1;
+          } else if (student.status === "passe" && previousLevel === 3) {
+            student.status = "diplomé";
+          }
+          if (student.status !== "diplomé") {
+            student.status = null;
+          }
         }
 
-        // Mise à jour pour les étudiants non diplômés
-        if (student.status === "redouble") {
-          student.year = year;
-        } else if (
-          student.status === "passe" &&
-          (student.level === 1 || student.level === 2)
-        ) {
-          student.year = year;
-          student.level += 1;
-        }
-
-        student.status = null; // Réinitialiser le statut pour les étudiants non diplômés
         await student.save();
       })
     );
 
-    // Mise à jour des enseignants
     const teachers = await Teacher.find();
     await Promise.all(
       teachers.map(async (teacher) => {
+        const previousYear = teacher.year || currentYear;
+        const previousGrade = teacher.grade || null;
+
+        teacher.history = teacher.history || [];
         teacher.history.push({
-          year: teacher.year,
-          grade: teacher.grade,
+          year: previousYear,
+          grade: previousGrade,
         });
 
         teacher.year = year;
@@ -137,28 +131,14 @@ export const createNewYear = async (req, res) => {
       })
     );
 
-    // Mise à jour des compétences
-    const skills = await Skill.find();
-    await Promise.all(
-      skills.map(async (skill) => {
-        skill.history.push({
-          year: skill.year,
-          subjects: skill.subjects, // Matières associées
-        });
-
-        skill.year = year;
-        await skill.save();
-      })
-    );
-
-    // Mise à jour des matières
     const subjects = await Subject.find();
     await Promise.all(
       subjects.map(async (subject) => {
+        subject.archive = subject.archive || [];
         subject.archive.push({
-          year: subject.year,
+          year: subject.year || currentYear,
           assignedTeacher: subject.assignedTeacher,
-          assignedStudent: subject.assignedStudent,
+          assignedStudent: subject.assignedStudent || [],
         });
 
         subject.year = year;
@@ -168,13 +148,66 @@ export const createNewYear = async (req, res) => {
       })
     );
 
-    res
-      .status(201)
-      .json({ message: "Nouvelle année créée avec succès.", year });
+    res.status(201).json({
+      message:
+        "Nouvelle année créée avec succès pour les étudiants, les enseignants et les matières.",
+      year,
+    });
   } catch (error) {
-    console.error("Erreur lors de la création de la nouvelle année :", error);
+    console.error(
+      "Erreur lors de la création de la nouvelle année :",
+      error.message,
+      error.stack
+    );
     res.status(500).json({
       message: "Erreur serveur lors de la création de la nouvelle année.",
+      error: error.message,
+    });
+  }
+};
+
+export const getAvailableYears = async (req, res) => {
+  try {
+    // Fetch distinct years from Student
+    const studentYears = await Student.distinct("year");
+    const studentHistoryYears = await Student.distinct("history.year");
+
+    // Fetch distinct years from Teacher
+    const teacherYears = await Teacher.distinct("year");
+    const teacherHistoryYears = await Teacher.distinct("history.year");
+
+    // Fetch distinct years from Subject
+    const subjectYears = await Subject.distinct("year");
+    const subjectHistoryYears = await Subject.distinct("archive.year");
+
+    // Combine all years and remove duplicates
+    const allYears = [
+      ...new Set([
+        ...studentYears,
+        ...studentHistoryYears,
+        ...teacherYears,
+        ...teacherHistoryYears,
+        ...subjectYears,
+        ...subjectHistoryYears,
+      ]),
+    ].filter((year) => year !== null && year !== undefined);
+
+    // Sort years in ascending order
+    allYears.sort((a, b) => a - b);
+
+    res.status(200).json({
+      message: "Available years retrieved successfully.",
+      years: allYears,
+    });
+  } catch (error) {
+    console.error(
+      "Error retrieving available years:",
+      error.message,
+      error.stack
+    );
+    res.status(500).json({
+      message: "Server error while retrieving available years.",
+      error: error.message,
     });
   }
 };
