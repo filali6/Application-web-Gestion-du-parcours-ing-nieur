@@ -127,11 +127,6 @@ const routes = [
           () =>
             import("./views/adminSidebarContents/internships/ManageInternships")
         ),
-        path: "/internships/manage-internships",
-        element: lazy(
-          () =>
-            import("./views/adminSidebarContents/internships/ManageInternships")
-        ),
       },
       {
         path: "/internships/topic-status",
@@ -216,7 +211,6 @@ const routes = [
             import("./views/studentSidebarContents/internships/topicDetails")
         ),
       },
-
       {
         path: "/student/student-profile",
         element: lazy(

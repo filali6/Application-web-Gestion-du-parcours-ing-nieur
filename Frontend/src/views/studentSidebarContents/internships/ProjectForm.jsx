@@ -10,7 +10,6 @@ import {
 
 const ProjectForm = ({ onTopicAdded, onClose }) => {
   const [form] = Form.useForm();
-  const [fileList, setFileList] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -20,43 +19,30 @@ const ProjectForm = ({ onTopicAdded, onClose }) => {
       const formData = new FormData();
       formData.append("titre", values.titre);
 
-      // Add files to FormData
-      fileList.forEach((file) => {
+      // Assurez-vous que documents est bien fourni
+      if (!values.documents || values.documents.length === 0) {
+        message.error("Please upload at least one document.");
+        setLoading(false);
+        return;
+      }
+
+      values.documents.forEach((file) => {
         formData.append("documents", file.originFileObj);
       });
 
       const result = await addTopic(formData);
 
-      // Use Ant Design success message instead of alert
       message.success("Topic submitted successfully!");
 
-      console.log(result);
       if (onTopicAdded) onTopicAdded(result);
       navigate("/myinternships");
       if (onClose) onClose();
     } catch (error) {
-      // Use Ant Design error message instead of alert
       message.error("You have already submitted two topics.");
-      console.error("Error submitting the topic:", error);
+      console.error("Erreur soumission sujet:", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Configuration for Upload component
-  const uploadProps = {
-    onRemove: (file) => {
-      const index = fileList.indexOf(file);
-      const newFileList = fileList.slice();
-      newFileList.splice(index, 1);
-      setFileList(newFileList);
-    },
-    beforeUpload: (file) => {
-      setFileList([...fileList, file]);
-      return false; // Prevent automatic upload
-    },
-    fileList,
-    multiple: true,
   };
 
   return (
@@ -103,14 +89,13 @@ const ProjectForm = ({ onTopicAdded, onClose }) => {
             },
           ]}
           valuePropName="fileList"
-          getValueFromEvent={(e) => {
-            if (Array.isArray(e)) {
-              return e;
-            }
-            return e && e.fileList;
-          }}
+          getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
         >
-          <Upload.Dragger {...uploadProps} listType="picture">
+          <Upload.Dragger
+            beforeUpload={() => false}
+            multiple
+            listType="picture"
+          >
             <p className="ant-upload-drag-icon">
               <InboxOutlined />
             </p>

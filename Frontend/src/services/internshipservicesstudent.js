@@ -8,8 +8,10 @@ export const addTopic = async (formData) => {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
         "Content-Type": "multipart/form-data", // Nécessaire pour l'upload de fichiers
+
       },
     });
+    console.log("Token JWT:", localStorage.getItem("token"));
     return response.data.model; // Retourne le sujet ajouté
   } catch (error) {
     console.error(
