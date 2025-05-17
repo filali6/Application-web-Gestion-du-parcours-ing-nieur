@@ -125,6 +125,13 @@ const getMenuItems = () => {
       type: 'item',
       icon: 'feather icon-file-text',
       url: '/student/student-cv'
+    },
+    {
+      id: 'planning-pfa',
+      title: 'My Plannings',
+      type: 'item',
+      icon: 'feather icon-calendar',
+      url: '/student/planning-pfa'
     }
   ];
 

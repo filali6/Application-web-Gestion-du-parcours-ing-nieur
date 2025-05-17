@@ -5,12 +5,15 @@ import Swal from "sweetalert2";
 import { getMyPfas, deletePfa } from "../../../services/pfaService";
 import AddPfaModal from "./pfaForm";
 import EditPfaModal from "./editPfaForm";
+import { useNavigate } from "react-router-dom";
 
 const PfaList = () => {
   const [pfas, setPfas] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingPfa, setEditingPfa] = useState(null);
+    const navigate = useNavigate();
+  
 
   useEffect(() => {
     fetchPfas();
@@ -185,6 +188,9 @@ const PfaList = () => {
       >
         Add PFAs
       </Button>
+      <Button variant="info" onClick={() => navigate("/pfa/myPlannings-pfa")}>
+            Voir mes plannings
+      </Button>
 
       <Table columns={columns} dataSource={pfas} rowKey="_id" />
 
@@ -194,6 +200,8 @@ const PfaList = () => {
         onClose={() => setIsAddModalOpen(false)}
         onRefresh={fetchPfas}
       />
+
+      
 
       {/* Modal de mise à jour */}
       {editingPfa && (

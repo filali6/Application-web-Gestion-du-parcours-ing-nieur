@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "react-bootstrap";
 import Swal from "sweetalert2";
 import GenericList from "../../../components/Generic/GenericList";
+
 import {
   fetchPFAs,
   publishPFAs,
@@ -35,6 +36,14 @@ const ManagePFA = () => {
   const [pfas, setPfas] = useState([]);
   const [loading, setLoading] = useState(true);
 
+
+  const [showModal, setShowModal] = useState(false); // Pour la modale d'édition
+const [editingPlanning, setEditingPlanning] = useState(null); // Pour stocker le planning à éditer
+
+const [showGenerateModal, setShowGenerateModal] = useState(false); // Pour la modale de génération
+const [plannings, setPlannings] = useState([]);
+
+
   useEffect(() => {
     loadPFAs();
   }, []);
@@ -49,6 +58,16 @@ const ManagePFA = () => {
       setLoading(false);
     }
   };
+
+
+  const loadPlannings = async () => {
+  try {
+    const data = await fetchPlannings(); // à créer ou importer selon ton service
+    setPlannings(data); // un state planning à ajouter
+  } catch (error) {
+    console.error("Erreur lors du chargement des plannings:", error);
+  }
+};
 
   const hasPublishedOrPending = pfas.some(
     (pfa) => pfa.status === "published" || pfa.status === "pending"
@@ -181,6 +200,9 @@ const ManagePFA = () => {
           </Button>
           <Button variant="info" onClick={() => navigate("/pfa/validate-pfa")}>
             Valider PFAs
+          </Button>
+          <Button variant="info" onClick={() => navigate("/pfa/planning")}>
+            Gérer plannings
           </Button>
         </div>
       </div>
