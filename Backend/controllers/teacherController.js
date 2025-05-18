@@ -469,3 +469,14 @@ export const decryptTeacherPassword = async (req, res) => {
     });
   }
 };
+
+
+export const getAllTeachers = async (req, res) => {
+  try {
+    const teachers = await Teacher.find({}, "_id firstName lastName");
+    res.status(200).json(teachers);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des enseignants:", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};

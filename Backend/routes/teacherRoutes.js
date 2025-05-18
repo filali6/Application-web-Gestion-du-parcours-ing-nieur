@@ -8,6 +8,7 @@ import {
   importTeachers,
   decryptTeacherPassword,
   deleteTeacher,
+  getAllTeachers
 } from "../controllers/teacherController.js";
 import { validateTeacher } from "../middlewares/teacherValidate.js";
 import { teacherValidationSchema } from "../joiValidations/teacherValidation.js";
@@ -17,6 +18,13 @@ import { upload } from "../middlewares/upload.js";
 import { yearFilter } from "../middlewares/year.js";
 
 const router = express.Router();
+
+router.get(
+  "/AllTeachers",
+  loggedMiddleware, // Vérifie le token et ajoute req.auth
+  isAdmin, // Vérifie que l'utilisateur est un administrateur
+  getAllTeachers// Contrôleur pour récupérer la liste des enseignants
+);
 
 // ajouter un enseignant
 router.post(
@@ -78,5 +86,10 @@ router.delete("/:id", loggedMiddleware, isAdmin, deleteTeacher);
 
 //déchiffrer le mdp
 router.get("/decrypt/:id", loggedMiddleware, isAdmin, decryptTeacherPassword);
+
+
+
+
+ 
 
 export default router;

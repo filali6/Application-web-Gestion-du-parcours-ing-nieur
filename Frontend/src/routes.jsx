@@ -107,6 +107,20 @@ const routes = [
           () => import("./views/adminSidebarContents/pfa/ValidatePFA")
         ),
       },
+           {
+        path: "/pfa/planning",
+        element: lazy(
+          () => import("./views/adminSidebarContents/pfa/planning/managePlanning")
+        ),
+      },
+
+
+        {
+        path: "/pfa/myPlannings-pfa",
+        element: lazy(
+          () => import("./views/teacherSidebarContents/plannings/managePlanning")
+        ),
+      },
       {
         path: "/pfa/auto-assign",
         element: lazy(
@@ -223,6 +237,14 @@ const routes = [
           () => import("./views/studentSidebarContents/cv/studentCV")
         ),
       },
+
+      {
+        path: "/student/planning-pfa",
+        element: lazy(
+          () => import("./views/studentSidebarContents/pfaPlannings/ManagePFA")
+        ),
+      },
+      
       {
         path: "*",
         exact: "true",

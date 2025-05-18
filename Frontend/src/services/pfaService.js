@@ -33,6 +33,8 @@ export const deletePfa = async (id) => {
     headers: getAuthHeaders(),
   });
 };
+
+
 export const fetchPFAs = async () => {
   const token = localStorage.getItem("token");
   const response = await axios.get(`${API_URL}/pfa/getPFAs`, {
@@ -40,6 +42,7 @@ export const fetchPFAs = async () => {
   });
   return response.data;
 };
+
 
 export const publishPFAs = async (response) => {
   const token = localStorage.getItem("token");
@@ -51,6 +54,8 @@ export const publishPFAs = async (response) => {
     }
   );
 };
+
+
 
 export const sendPfaEmail = async () => {
   const token = localStorage.getItem("token");
@@ -138,4 +143,83 @@ export const sendPfaValidationLink = async (link, emailType) => {
       },
     }
   );
+};
+
+
+export const fetchPlannings = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.get(`${API_URL}/pfa/getPlannings`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+};
+
+
+export const generateSoutenances = async (rooms, dates) => {
+  const token = localStorage.getItem("token");
+
+  const response = await axios.post(
+    `${API_URL}/pfa/generateSoutenances`,
+    {
+      rooms,
+      dates, // dates déjà au format 'YYYY-MM-DD' dans le frontend, donc pas besoin de .map(d => d.toISOString())
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  return response.data;
+};
+
+
+export const sendPlanningEmail = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.post(
+    `${API_URL}/pfa/planning/sendEmails`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return response.data; // 
+};
+
+
+export const publishPlannings = async (response) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.patch(
+    `${API_URL}/pfa/publishPlannings/${response}`,
+    {},
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return res.data; // ⬅️ Retourne la réponse du backend
+};
+
+
+export const updatePlanning = async(planningId, payload) => {
+  const token = localStorage.getItem("token");
+  const res = await axios.patch(
+    `${API_URL}/pfa/patchPlanning/${planningId}`,
+    payload,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+  return res.data; // ⬅️ Retourne la réponse du backend
+};
+
+
+
+export const fetchMyPlannings = async () => {
+  const token = localStorage.getItem("token");
+  const response = await axios.get(`${API_URL}/pfa/getMyPlannings`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
 };

@@ -159,3 +159,21 @@ export const updateTeacherPassword = async (id, passwordData, token) => {
     };
   }
 };
+
+
+export const getAllTeachers = async () => {
+
+  try {
+      const token = localStorage.getItem("token");
+    const response = await axios.get(`${BASE_URL}/AllTeachers`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error in fetchTeachers:", error);
+    return [];
+  }
+};
+
+
+

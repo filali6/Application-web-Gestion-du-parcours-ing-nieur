@@ -45,7 +45,7 @@ const studentSchema = mongoose.Schema({
   isoptionPublished: { type: Boolean, default: false }, // masquer/publier la liste des choix
   emailSent: { type: Boolean, default: false }, //indiquer si l'e-mail a été envoyé
 
-  level: { type: Number, enum: [1, 2, 3] },
+  level: { type: Number, enum: [1, 2, 3], default:2 },
 
   integrationYear: { type: String, required: false }, // Year of integration
   group: { type: Number, enum: ["2ing1", "2ing2"], required: false },

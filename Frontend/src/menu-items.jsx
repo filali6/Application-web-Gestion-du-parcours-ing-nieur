@@ -139,6 +139,21 @@ const getMenuItems = () => {
       url: "/student/student-cv",
     },
     {
+
+      id: 'student-cv',
+      title: 'My Cv',
+      type: 'item',
+      icon: 'feather icon-file-text',
+      url: '/student/student-cv'
+    },
+    {
+      id: 'planning-pfa',
+      title: 'My Plannings',
+      type: 'item',
+      icon: 'feather icon-calendar',
+      url: '/student/planning-pfa'
+    },
+    {
       id: "student-profile",
       title: "My Profile",
       type: "item",
