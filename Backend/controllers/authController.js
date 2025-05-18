@@ -31,7 +31,8 @@ export const loginStudent = async (req, res) => {
       token,
       user: {
         firstName: existingStudent.firstName,
-        lastName: existingStudent.lastName
+        lastName: existingStudent.lastName,
+        level: existingStudent.level,
       }
     });
   } catch (error) {

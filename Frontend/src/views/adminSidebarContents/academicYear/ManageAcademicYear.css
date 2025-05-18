@@ -1,0 +1,80 @@
+/* Container */
+.manage-academic-year-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
+.manage-academic-year-container h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  color: #333;
+}
+
+/* Card */
+.manage-academic-year-container .academic-year-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 8px;
+}
+
+/* Card Body */
+.manage-academic-year-container .academic-year-card .card-body {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+/* Title */
+.manage-academic-year-container .academic-year-card .card-title {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+/* Unused styles for card-text */
+.manage-academic-year-container .academic-year-card .card-text ul {
+  padding-left: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.manage-academic-year-container .academic-year-card .card-text li {
+  margin-bottom: 0.5rem;
+}
+
+/* Form */
+.manage-academic-year-container .academic-year-card .form-control {
+  max-width: 200px;
+  margin-bottom: 1.5rem;
+}
+
+/* Button */
+.manage-academic-year-container .academic-year-card .btn-primary {
+  background-color: #c8bcde;
+  border-color: #6f42c1;
+}
+
+.manage-academic-year-container .academic-year-card .btn-primary:hover {
+  background-color: #b8abcf;
+  border-color: #6f42c1;
+}
+
+.manage-academic-year-container .academic-year-card .btn-primary:disabled {
+  background-color: #ccc;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .manage-academic-year-container {
+    margin: 1rem;
+  }
+
+  .manage-academic-year-container .academic-year-card .form-control {
+    max-width: 100%;
+  }
+}

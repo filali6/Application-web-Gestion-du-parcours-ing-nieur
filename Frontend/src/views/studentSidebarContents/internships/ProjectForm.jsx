@@ -1,80 +1,128 @@
 import React, { useState } from "react";
 import { addTopic } from "services/internshipservicesstudent";
 import { useNavigate } from "react-router-dom";
-import { Modal, Button, Form, InputGroup } from "react-bootstrap";
+import { Modal, Button, Form, Input, Upload, message } from "antd";
+import {
+  InboxOutlined,
+  FileAddOutlined,
+  SendOutlined,
+} from "@ant-design/icons";
 
 const ProjectForm = ({ onTopicAdded, onClose }) => {
-  const [titre, setTitre] = useState("");
-  const [documents, setDocuments] = useState(null);
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleFileChange = (e) => {
-    setDocuments(e.target.files);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    formData.append("titre", titre);
-
-    if (documents) {
-      for (let i = 0; i < documents.length; i++) {
-        formData.append("documents", documents[i]); // Ajoute chaque fichier
-      }
-    }
-
+  const handleSubmit = async (values) => {
+    setLoading(true);
     try {
+      const formData = new FormData();
+      formData.append("titre", values.titre);
+
+      // Assurez-vous que documents est bien fourni
+      if (!values.documents || values.documents.length === 0) {
+        message.error("Please upload at least one document.");
+        setLoading(false);
+        return;
+      }
+
+      values.documents.forEach((file) => {
+        formData.append("documents", file.originFileObj);
+      });
+
       const result = await addTopic(formData);
-      alert("Sujet déposé avec succès !");
-      console.log(result);
+
+      message.success("Topic submitted successfully!");
+
       if (onTopicAdded) onTopicAdded(result);
       navigate("/myinternships");
       if (onClose) onClose();
     } catch (error) {
-      alert("Erreur lors du dépôt du sujet.");
-      console.error("Erreur lors du dépôt du sujet :", error);
+      message.error("You have already submitted two topics.");
+      console.error("Erreur soumission sujet:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Modal show={true} onHide={onClose} centered>
-      <Modal.Header closeButton>
-        <Modal.Title>Déposer un sujet</Modal.Title>
-      </Modal.Header>
+    <Modal
+      title={
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <FileAddOutlined style={{ marginRight: "8px" }} />
+          Submit a Topic
+        </div>
+      }
+      open={true}
+      onCancel={onClose}
+      footer={null}
+      width={600}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={{ titre: "" }}
+      >
+        {/* Title Input */}
+        <Form.Item
+          name="titre"
+          label="Topic Title"
+          rules={[
+            {
+              required: true,
+              message: "Please enter a title for your topic",
+            },
+          ]}
+        >
+          <Input placeholder="Enter topic title" />
+        </Form.Item>
 
-      <Modal.Body>
-        <Form onSubmit={handleSubmit}>
-          {/* Titre Input */}
-          <Form.Group controlId="titre">
-            <Form.Label>Titre du sujet</Form.Label>
-            <Form.Control
-              type="text"
-              placeholder="Entrez le titre du sujet"
-              value={titre}
-              onChange={(e) => setTitre(e.target.value)}
-              required
-            />
-          </Form.Group>
+        {/* Upload Files */}
+        <Form.Item
+          name="documents"
+          label="Documents"
+          rules={[
+            {
+              required: true,
+              message: "Please upload at least one document",
+            },
+          ]}
+          valuePropName="fileList"
+          getValueFromEvent={(e) => (Array.isArray(e) ? e : e?.fileList)}
+        >
+          <Upload.Dragger
+            beforeUpload={() => false}
+            multiple
+            listType="picture"
+          >
+            <p className="ant-upload-drag-icon">
+              <InboxOutlined />
+            </p>
+            <p className="ant-upload-text">
+              Click or drag and drop files into this area to upload them
+            </p>
+            <p className="ant-upload-hint">
+              You can upload multiple files at once
+            </p>
+          </Upload.Dragger>
+        </Form.Item>
 
-          {/* File Upload */}
-          <Form.Group controlId="documents">
-            <Form.Label>Choisir des fichiers</Form.Label>
-            <InputGroup>
-              <Form.Control
-                type="file"
-                multiple
-                onChange={handleFileChange}
-                required
-              />
-            </InputGroup>
-          </Form.Group>
-
-          {/* Submit Button */}
-          <Button variant="success" type="submit" className="w-100 mt-3">
-            Déposer le sujet
+        {/* Submit Button */}
+        <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+          <Button onClick={onClose} style={{ marginRight: "10px" }}>
+            Cancel
           </Button>
-        </Form>
-      </Modal.Body>
+          <Button
+            type="primary"
+            htmlType="submit"
+            icon={<SendOutlined />}
+            loading={loading}
+          >
+            Submit Project
+          </Button>
+        </Form.Item>
+      </Form>
     </Modal>
   );
 };

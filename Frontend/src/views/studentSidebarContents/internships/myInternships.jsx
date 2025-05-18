@@ -2,11 +2,23 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ProjectForm from "./ProjectForm";
 import { getTopics } from "services/internshipservicesstudent";
-import { Button, Card, Modal, Container, Row, Col } from "react-bootstrap";
+import { Container, Spinner } from "react-bootstrap";
+import { Card, Typography, Space, List, Button, Tag } from "antd";
+import {
+  SolutionOutlined,
+  PlusOutlined,
+  UserOutlined,
+  ClockCircleOutlined,
+  CheckCircleOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
+
+const { Title, Text } = Typography;
 
 const MyInternships = () => {
   const [showForm, setShowForm] = useState(false);
   const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,10 +27,13 @@ const MyInternships = () => {
 
   const loadTopics = async () => {
     try {
+      setLoading(true);
       const data = await getTopics();
       setTopics(data.topics);
     } catch (error) {
       console.error("Erreur lors du chargement des sujets :", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -26,45 +41,101 @@ const MyInternships = () => {
     setShowForm(!showForm);
   };
 
-  return (
-    <Container className="mt-4">
-      <h2>My Internships</h2>
+  // Fonction pour naviguer vers la page de détails
+  const goToTopicDetails = (topic) => {
+    // Stocker l'ID du sujet sélectionné dans localStorage
+    localStorage.setItem("selectedTopicId", topic._id || topic.id);
+    console.log("ID du sujet stocké:", topic._id || topic.id);
+    navigate(`/internships/details/`);
+    // Pour déboguer
+    console.log("Tentative de navigation vers /internships/details/");
+  };
 
+  return (
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
+      <Title level={2} style={{ marginBottom: "24px" }}>
+        <SolutionOutlined /> My Internships
+      </Title>
+
+      {/* Bouton d'ajout */}
       <Button
-        variant="primary"
-        className="position-fixed bottom-0 end-0 m-3"
+        type="primary"
+        shape="circle"
+        size="large"
+        icon={<PlusOutlined />}
         style={{
+          position: "fixed",
+          bottom: "24px",
+          right: "24px",
           width: "60px",
           height: "60px",
-          fontSize: "36px",
-          borderRadius: "50%",
-          display: "flex", // Utilisation de flexbox
-          alignItems: "center", // Centrer verticalement
-          justifyContent: "center", // Centrer horizontalement
+          fontSize: "24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
         onClick={toggleForm}
-      >
-        +
-      </Button>
+      />
 
       {showForm && (
         <ProjectForm onTopicAdded={loadTopics} onClose={toggleForm} />
       )}
 
-      <Row className="mt-4">
-        {topics.map((topic) => (
-          <Col key={topic.id} xs={12} md={6} lg={4} className="mb-4">
-            <Card className="shadow-sm">
-              <Card.Body>
-                <div className="d-flex justify-content-between align-items-center">
-                  <h5 className="card-title">{topic.titre}</h5>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
-    </Container>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "40px" }}>
+          <Spinner animation="border" />
+        </div>
+      ) : (
+        <List
+          grid={{ gutter: 16, xs: 1, sm: 1, md: 1, lg: 1, xl: 1, xxl: 1 }}
+          dataSource={topics || []}
+          locale={{ emptyText: "No topics found" }}
+          renderItem={(topic) => (
+            <List.Item>
+              <Card
+                title={
+                  <Space>
+                    <Text strong>{topic.titre}</Text>
+                    {topic.isLate !== undefined && (
+                      <Tag
+                        color={topic.isLate ? "orange" : "green"}
+                        icon={
+                          topic.isLate ? (
+                            <ClockCircleOutlined />
+                          ) : (
+                            <CheckCircleOutlined />
+                          )
+                        }
+                      >
+                        {topic.isLate
+                          ? "Late Submission"
+                          : "On-time Submission"}
+                      </Tag>
+                    )}
+                  </Space>
+                }
+                hoverable // Ajoute un effet hover pour indiquer que c'est cliquable
+                onClick={() => goToTopicDetails(topic)} // Fonction de navigation simplifiée
+                style={{
+                  marginBottom: "16px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                }}
+                actions={[
+                  <div key="view-details">
+                    <RightOutlined /> View Details
+                  </div>,
+                ]}
+              >
+                <Text>
+                  Click to track the status of your summer internship topic
+                </Text>
+              </Card>
+            </List.Item>
+          )}
+        />
+      )}
+    </div>
   );
 };
 

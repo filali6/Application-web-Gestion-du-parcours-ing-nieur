@@ -97,17 +97,16 @@ export const getSubjects = async (req, res) => {
 
     let query = { ...filter };
 
+    const { level, semester } = req.query;
+    if (level) query.level = level;
+    if (semester) query.semester = semester;
+
     if (role === "admin") {
       // Admin sees everything
     } else if (role === "teacher") {
       // Teacher sees only their own published subjects
       query.assignedTeacher = userId;
       query.isPublished = true;
-
-      // Teacher-specific filters
-      const { level, semester } = req.query;
-      if (level) query.level = level;
-      if (semester) query.semester = semester;
     } else if (role === "student") {
       // Student sees only their own published subjects
       query.assignedStudent = userId;
@@ -241,6 +240,7 @@ export const updateSubjectProgress = async (req, res) => {
           email: student.email,
           subject: `Progress Updated: ${subject.title}`,
           htmlContent: emailContent,
+          attachments: COMMON_ATTACHMENTS,
         })
       );
     });
@@ -473,6 +473,7 @@ export const validateProposition = async (req, res) => {
         level: subject.level,
         semester: subject.semester,
         curriculum: { ...subject.curriculum }, // Deep clone to preserve old state
+        progress: [...subject.progress], // Save current progress in history
       },
       reason: latestProposition.reason || "No reason provided",
       submittedBy: latestProposition.submittedBy,
@@ -485,6 +486,7 @@ export const validateProposition = async (req, res) => {
     subject.semester = latestProposition.changes.semester || subject.semester;
     subject.curriculum =
       latestProposition.changes.curriculum || subject.curriculum;
+    subject.progress = []; // Empty the progress array completely
 
     // Remove all propositions after validating
     subject.propositions = [];
@@ -831,5 +833,40 @@ export const getSubjectById = async (req, res) => {
     res
       .status(500)
       .json({ error: "An error occurred while fetching the subject." });
+  }
+};
+
+/////////////// get progress for stuener /////////////////////////////////
+export const getSubjectProgress = async (req, res) => {
+  const { id } = req.params;
+  const { role, userId } = req.auth;
+
+  try {
+    const subject = await Subject.findById(id)
+      .populate("assignedStudent", "email firstName lastName")
+      .populate("assignedTeacher", "email firstName lastName");
+
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found." });
+    }
+
+    if (
+      role === "student" &&
+      (!subject.assignedStudent ||
+        !subject.assignedStudent.some(
+          (student) => student._id.toString() === userId
+        ))
+    ) {
+      return res.status(403).json({
+        error: "You are not authorized to view this subject's progress.",
+      });
+    }
+
+    return res.status(200).json({ progress: subject.progress });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ error: "An error occurred while fetching subject progress." });
   }
 };

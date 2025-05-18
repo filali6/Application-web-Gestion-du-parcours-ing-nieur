@@ -1,65 +1,104 @@
 import React, { useState } from "react";
-import { Card, Button, Container, Row, Col } from "react-bootstrap";
+import { useNavigate } from "react-router-dom";
+import { Card, Typography, Space, List, Button, Divider } from "antd";
+import {
+  BookOutlined,
+  UserSwitchOutlined,
+  ArrowLeftOutlined,
+  FileSearchOutlined,
+  RightOutlined,
+} from "@ant-design/icons";
+
+// Import des composants réels
 import Consult from "./Consult";
 import Affect from "./Affect";
 
-const OptionCard = ({ title, description, onClick }) => {
-  return (
-    <Card className="shadow-sm" onClick={onClick} style={{ cursor: "pointer" }}>
-      <Card.Body>
-        <Card.Title>{title}</Card.Title>
-        <Card.Text>{description}</Card.Text>
-      </Card.Body>
-    </Card>
-  );
-};
+const { Title, Text } = Typography;
 
 const ManageInternships = () => {
   const [selectedOption, setSelectedOption] = useState(null);
+  const navigate = useNavigate();
+
+  // Options pour la gestion des stages
+  const options = [
+    {
+      key: "consult",
+      title: "View the list of subjects and students",
+      description: "See all the proposed subjects and the associated students.",
+      icon: <FileSearchOutlined />,
+    },
+    {
+      key: "affect",
+      title: "Assign teachers to subjects",
+      description: "Assign a teacher to each proposed subject.",
+      icon: <UserSwitchOutlined />,
+    },
+  ];
 
   return (
-    <Container className="py-4">
-      <h3>Manage Internships</h3>
-
-      {/* Affichage des options uniquement si aucune option n'est sélectionnée */}
+    <div style={{ padding: "24px", maxWidth: "1200px", margin: "0 auto" }}>
       {!selectedOption ? (
         <>
-          <p>Choose an option to continue:</p>
-          <Row className="g-4">
-            <Col md={6}>
-              <OptionCard
-                title="View the list of subjects and students."
-                description="See all the proposed subjects and the associated students."
-                onClick={() => setSelectedOption("consult")}
-              />
-            </Col>
-            <Col md={6}>
-              <OptionCard
-                title="Assign teachers to subjects."
-                description="Assign a teacher to each proposed subject."
-                onClick={() => setSelectedOption("affect")}
-              />
-            </Col>
-          </Row>
+          <Title level={2} style={{ marginBottom: "24px" }}>
+            <BookOutlined /> Manage Internships
+          </Title>
+
+          <Text style={{ marginBottom: "24px", display: "block" }}>
+            Choose an option to continue:
+          </Text>
+
+          <List
+            grid={{ gutter: 16, xs: 1, sm: 1, md: 2, lg: 2, xl: 2, xxl: 2 }}
+            dataSource={options}
+            renderItem={(option) => (
+              <List.Item>
+                <Card
+                  title={
+                    <Space>
+                      {option.icon}
+                      <Text strong>{option.title}</Text>
+                    </Space>
+                  }
+                  hoverable
+                  onClick={() => setSelectedOption(option.key)}
+                  style={{
+                    marginBottom: "16px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    height: "100%",
+                  }}
+                  actions={[
+                    <div key="select">
+                      <RightOutlined /> Select Option
+                    </div>,
+                  ]}
+                >
+                  <Text>{option.description}</Text>
+                </Card>
+              </List.Item>
+            )}
+          />
         </>
       ) : (
         <>
-          {/* Bouton Retour pour revenir aux options */}
           <Button
-            variant="outline-primary"
+            type="text"
+            icon={<ArrowLeftOutlined />}
             onClick={() => setSelectedOption(null)}
+            style={{ marginBottom: "16px" }}
           >
-            Back
+            Back to Options
           </Button>
 
-          {/* Affichage du contenu sélectionné */}
-          <div className="mt-4">
+          <Divider />
+
+          <div style={{ marginTop: "24px" }}>
             {selectedOption === "consult" && <Consult />}
             {selectedOption === "affect" && <Affect />}
           </div>
         </>
       )}
-    </Container>
+    </div>
   );
 };
 

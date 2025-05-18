@@ -2,7 +2,7 @@ import express from "express";
 
 import { addTopic,getTopics } from "../controllers/topic.js";
 import { loggedMiddleware } from "../middlewares/authMiddlewares.js";
-import { isStudent } from "../middlewares/roleMiddlewares.js";
+import { isAdmin, isAdminOrStudent, isAdminOrTeacher, isStudent } from "../middlewares/roleMiddlewares.js";
 import { topicUpload } from "../middlewares/topicUpload.js"; // Import du middleware global
 
 const router = express.Router();
@@ -18,7 +18,7 @@ router.post(
 router.get(
   "/topics/drop",
   loggedMiddleware,
-  isStudent,
+   isAdminOrStudent,
 
   getTopics
 );

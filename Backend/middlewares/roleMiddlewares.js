@@ -62,7 +62,16 @@ export const isAdminOrTeacher = (req, res, next) => {
   }
   next();
 };
-
+///////////////ADMIN OR TEACHER ROLE MIDDLEWARES////////////
+export const isAdminOrStudent = (req, res, next) => {
+  const { role } = req.auth;
+  if (role !== "admin" && role !== "student") {
+    return res
+      .status(403)
+      .json({ error: "Access denied. Admins or student only." });
+  }
+  next();
+};
 ///////////////STUDENT OR ADMIN OR TEACHER ROLE MIDDLEWARES////////////
 export const isStudentOrAdminOrTeacher = (req, res, next) => {
   const { role } = req.auth;

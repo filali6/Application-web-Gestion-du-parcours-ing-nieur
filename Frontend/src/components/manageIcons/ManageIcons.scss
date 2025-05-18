@@ -1,31 +1,33 @@
 // src/components/ManageIcons.scss
-.manage-icons {
-    display: flex;
-    gap: 8px;
-  
-    .icon {
-      cursor: pointer;
-      font-size: 20px;
-      transition: transform 0.2s;
-  
-      &:hover {
-        transform: scale(1.2);
-      }
-  
-      &.info {
-        color: #168d49;
-      }
-  
-      &.edit {
-        color:#168d49;
-      }
-  
-      &.lock {
-        color: #168d49;
-      }
-  
-      &.delete {
-        color: #168d49;
-      }
-    }
+.icon {
+  cursor: pointer;
+  font-size: 20px;
+  transition: transform 0.2s;
+  margin-right: 8px;
+  color: #70d09a; // Couleur par défaut pour tous les icônes
+
+  &:last-child {
+    margin-right: 0;
   }
+
+  &:hover {
+    transform: scale(1.2);
+  }
+
+  
+  &.info {
+    color: #17a2b8;
+  }
+
+  &.edit {
+    color: #17a2b8;
+  }
+
+  &.lock {
+    color: #17a2b8;
+  }
+
+  &.delete {
+    color: #17a2b8;
+  }
+}

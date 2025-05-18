@@ -2,7 +2,7 @@ import axios from "axios";
 
 const BASE_URL = "http://localhost:5000/teachers";
 
-//  Fonction pour récupérer les  enseignants
+// Fonction pour récupérer les enseignants
 export const fetchTeachers = async (filters = {}, token) => {
   if (!token) {
     console.error("No token provided.");
@@ -12,15 +12,31 @@ export const fetchTeachers = async (filters = {}, token) => {
   try {
     const response = await axios.get(BASE_URL, {
       headers: { Authorization: `Bearer ${token}` },
-      params: filters,
+      params: { ...filters, _t: Date.now() }, // Cache-busting
     });
+
+    // Normaliser les données en fonction de inHistory
+    const { annee, inHistory } = filters;
+    if (annee && inHistory === "true") {
+      return response.data.map((teacher) => {
+        const historyEntry = teacher.history?.find(
+          (h) => h.year === Number(annee)
+        );
+        return {
+          ...teacher,
+          grade: historyEntry ? historyEntry.grade : null,
+          year: Number(annee), // Afficher l'année sélectionnée
+        };
+      });
+    }
     return response.data;
   } catch (error) {
     console.error("Error in fetchTeachers:", error);
     return [];
   }
 };
-//  Fonction pour importer des enseignants via un fichier Excel
+
+// Fonction pour importer des enseignants via un fichier Excel
 export const importTeachers = async (file, token) => {
   if (!file || !token) {
     console.error("File or token is missing.");
@@ -41,6 +57,7 @@ export const importTeachers = async (file, token) => {
     return { message: "An error occurred while importing teachers." };
   }
 };
+
 export const getTeacherById = async (id, token) => {
   if (!id || !token) {
     console.error("ID or token is missing.");
@@ -82,6 +99,7 @@ export const deleteTeacher = async (id, force = false, token) => {
     };
   }
 };
+
 //add teacher
 export const addTeacher = async (teacherData, token) => {
   try {
@@ -97,6 +115,7 @@ export const addTeacher = async (teacherData, token) => {
     return { message: messagebackend || "Error adding teacher." };
   }
 };
+
 // update teacher
 export const updateTeacher = async (id, updateData, token) => {
   try {

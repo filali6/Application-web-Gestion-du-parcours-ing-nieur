@@ -141,16 +141,27 @@ const routes = [
           () =>
             import("./views/adminSidebarContents/internships/ManageInternships")
         ),
-        path: "/internships/manage-internships",
+      },
+      {
+        path: "/internships/topic-status",
         element: lazy(
-          () =>
-            import("./views/adminSidebarContents/internships/ManageInternships")
+          () => import("./views/adminSidebarContents/internships/topicStatus")
         ),
       },
       {
         path: "/periode/manage-periode",
         element: lazy(
           () => import("./views/adminSidebarContents/periode/ManagePeriode")
+        ),
+      },
+      {
+        exact: "true",
+        path: "/academic-year/manage-academic-year",
+        element: lazy(
+          () =>
+            import(
+              "./views/adminSidebarContents/academicYear/ManageAcademicYear"
+            )
         ),
       },
       // 🔽 Teacher-specific routes //
@@ -163,7 +174,10 @@ const routes = [
       {
         path: "/subject-skills/subjects-skills-list",
         element: lazy(
-          () => import("./views/teacherSidebarContents/subjects/subjectsList")
+          () =>
+            import(
+              "./views/teacherSidebarContents/subjects-skills/subjectsList"
+            )
         ),
       },
       {
@@ -183,10 +197,7 @@ const routes = [
       {
         path: "/subjects/my-subjects-list",
         element: lazy(
-          () =>
-            import(
-              "./views/studentSidebarContents/skills-subjects/mySkillsSubjects"
-            )
+          () => import("./views/studentSidebarContents/subjects/mySubjects")
         ),
       },
       {
@@ -205,8 +216,15 @@ const routes = [
           () =>
             import("./views/studentSidebarContents/internships/myInternships")
         ),
+      }, // NOTEZ LA VIRGULE ICI
+      // Ajoutez la nouvelle route ici
+      {
+        path: "/internships/details/",
+        element: lazy(
+          () =>
+            import("./views/studentSidebarContents/internships/topicDetails")
+        ),
       },
-
       {
         path: "/student/student-profile",
         element: lazy(
@@ -231,6 +249,10 @@ const routes = [
         path: "*",
         exact: "true",
         element: () => <Navigate to={BASE_URL} />,
+      },
+      {
+        path: "/students/:studentId/cv",
+        element: lazy(() => import("./components/StudentCV/StudentCV")),
       },
     ],
   },

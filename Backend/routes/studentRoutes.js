@@ -9,7 +9,8 @@ import {
   importStudents,
   decryptStudentPassword,
   updateProfile,
-  getStudentsPFA
+  getStudentsPFA,
+  getProfile,
 } from "../controllers/studentController.js";
 import { validateStudent } from "../middlewares/studentValidate.js";
 import { studentValidationSchema } from "../joiValidations/studentValidation.js";
@@ -59,14 +60,29 @@ router.get(
   yearFilter,
   getStudents // Contrôleur pour récupérer la liste des étudiants
 );
+// Route GET /me (nouvelle route dédiée)
+router.get(
+  "/me",
+  loggedMiddleware,
+  isStudent, // Seul un étudiant peut accéder à son propre profil
+  getProfile
+);
 
-// récupérer un étudiant par ID
+// Route GET /:id (modifiée pour sécuriser l'accès)
 router.get(
   "/:id",
-  loggedMiddleware, // Vérifie le token et ajoute req.auth
-  isAdmin, // Vérifie que l'utilisateur est un administrateur
+  loggedMiddleware,
+  (req, res, next) => {
+    // Autoriser :
+    // 1. Les admins OU
+    // 2. Un étudiant accédant à SON PROPRE profil
+    if (req.auth.role === "admin" || req.params.id === req.auth.userId) {
+      return next();
+    }
+    return res.status(403).json({ message: "Accès non autorisé." });
+  },
   yearFilter,
-  getStudentById // Contrôleur pour récupérer un étudiant par ID
+  getStudentById
 );
 
 // modifier un étudiant
