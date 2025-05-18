@@ -92,30 +92,29 @@ export const createSubject = async (req, res) => {
 // get subjects
 export const getSubjects = async (req, res) => {
   try {
-    const filter = req.yearFilter || {};
     const { role, userId } = req.auth;
+    const { year, level, semester } = req.query;
 
-    let query = { ...filter };
-
-    const { level, semester } = req.query;
-    if (level) query.level = level;
-    if (semester) query.semester = semester;
+    // Build the filter
+    const filter = {};
+    
+    if (year) filter.year = Number(year);
+    if (level) filter.level = level;
+    if (semester) filter.semester = semester;
 
     if (role === "admin") {
-      // Admin sees everything
+      // Admin sees everything for the selected year
     } else if (role === "teacher") {
-      // Teacher sees only their own published subjects
-      query.assignedTeacher = userId;
-      query.isPublished = true;
+      filter.assignedTeacher = userId;
+      filter.isPublished = true;
     } else if (role === "student") {
-      // Student sees only their own published subjects
-      query.assignedStudent = userId;
-      query.isPublished = true;
+      filter.assignedStudent = userId;
+      filter.isPublished = true;
     } else {
       return res.status(403).json({ error: "Access denied." });
     }
 
-    const subjects = await Subject.find(query)
+    const subjects = await Subject.find(filter)
       .populate("assignedTeacher", "firstName lastName email")
       .populate("assignedStudent", "firstName lastName email")
       .populate("propositions.submittedBy", "firstName lastName email");
@@ -128,6 +127,7 @@ export const getSubjects = async (req, res) => {
       .json({ error: "An error occurred while fetching subjects." });
   }
 };
+
 
 //publish unpublish
 export const publishUnpublishAllSubjects = async (req, res) => {
@@ -703,49 +703,46 @@ export const deleteSubject = async (req, res) => {
     }
 
     const subject = await Subject.findById(id);
-    if (!subject) return res.status(404).json({ error: "Subject not found" });
+    if (!subject) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
 
-    const isAssignedToTeacher = !!subject.assignedTeacher;
-
-    if (isAssignedToTeacher) {
+    // ✅ If subject is assigned to a teacher
+    if (subject.assignedTeacher) {
       if (archive === true) {
-        // Save a snapshot in the archive array
-        subject.archive.push({
-          year: subject.year,
-          assignedTeacher: subject.assignedTeacher,
-          assignedStudent: subject.assignedStudent,
-          curriculum: subject.curriculum,
-        });
-
-        // Flag the subject as archived && unpublished
         subject.isArchived = true;
         subject.isPublished = false;
 
-        // DO NOT wipe the original fields — preserve them
         await subject.save();
-        return res
-          .status(200)
-          .json({ message: "Subject archived instead of deleted." });
+        return res.status(200).json({ message: "Subject archived." });
       } else {
         return res.status(400).json({
-          message:
-            "Cannot delete the subject because it is linked to a teacher.",
+          message: "Cannot delete subject because it is linked to a teacher.",
         });
       }
     }
 
-    // If not assigned, delete normally
+    // ✅ No teacher linked → delete permanently
     await Subject.findByIdAndDelete(id);
-    res.status(200).json({ message: "Subject deleted successfully." });
+    res.status(200).json({ message: "Subject deleted permanently." });
   } catch (error) {
-    console.error("Error deleting subject:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Error in subject deletion:", error);
+    res.status(500).json({ error: "Server error during deletion." });
   }
 };
 
+
+// Backend: getArchivedSubjects
 export const getArchivedSubjects = async (req, res) => {
   try {
-    const subjects = await Subject.find({ isArchived: true })
+    const { year } = req.query; // Get the year from query params
+    const filter = { isArchived: true }; // Filter for archived subjects
+
+    if (year) {
+      filter.year = year; // Add the year filter if provided
+    }
+
+    const subjects = await Subject.find(filter)
       .populate("assignedTeacher", "firstName lastName")
       .populate("assignedStudent", "firstName lastName")
       .lean();
@@ -755,6 +752,7 @@ export const getArchivedSubjects = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch archived subjects." });
   }
 };
+
 
 // Restore Subject (updated to accept publish param from frontend)
 export const restoreSubject = async (req, res) => {
@@ -868,5 +866,66 @@ export const getSubjectProgress = async (req, res) => {
     return res
       .status(500)
       .json({ error: "An error occurred while fetching subject progress." });
+  }
+};
+
+
+
+// GET subject historical data by year
+export const getSubjectHistory = async (req, res) => {
+  try {
+    const { year } = req.query;
+    if (!year) {
+      return res.status(400).json({ message: "Year is required" });
+    }
+
+    const numericYear = Number(year);
+
+    const subjects = await Subject.find({
+      archive: { $exists: true, $not: { $size: 0 } },
+      "archive.year": numericYear,
+    }).lean();
+
+    const results = [];
+
+    for (const subject of subjects) {
+      const archived = subject.archive.find(
+        (entry) => entry.year === numericYear
+      );
+      if (!archived) continue;
+
+      const populatedTeacher = archived.assignedTeacher
+        ? await Teacher.findById(archived.assignedTeacher)
+            .select("firstName lastName email")
+            .lean()
+        : null;
+
+      const populatedStudents = await Student.find({
+        _id: { $in: archived.assignedStudent || [] },
+      })
+        .select("firstName lastName email")
+        .lean();
+
+      results.push({
+        _id: subject._id,
+        title: archived.title || subject.title,
+        year: archived.year,
+        level: archived.level,
+        semester: archived.semester,
+        option: archived.option || null,
+        curriculum: archived.curriculum,
+        assignedTeacher: populatedTeacher,
+        assignedStudent: populatedStudents,
+        isArchived: archived.isArchived,
+      });
+    }
+
+    return res.status(200).json({ archivedSubjects: results });
+  } catch (err) {
+    console.error("Error fetching subject history:", err);
+    return res.status(500).json({
+      message: "Server error while fetching subject history.",
+      error: err.message,
+    });
   }
 };

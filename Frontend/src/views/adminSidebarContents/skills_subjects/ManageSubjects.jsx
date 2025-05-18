@@ -19,7 +19,9 @@ import {
   fetchStudentsByLevelAndOption,
   sendEvaluationEmailsToStudents,
   getSubjectEvaluations,
+  getSubjectHistory,
 } from "../../../services/subjects.service";
+import { fetchAvailableYears } from "../../../services/saison";
 import { useAuth } from "../../../contexts/AuthContext";
 
 const ITEMS_PER_PAGE = 5;
@@ -37,7 +39,10 @@ const ManageSubjects = () => {
   const [subjectDetails, setSubjectDetails] = useState(null);
   const [teachers, setTeachers] = useState([]);
   const { user } = useAuth();
-
+  const [availableYears, setAvailableYears] = useState([]);
+  const [latestYear, setLatestYear] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [subjectHistory, setSubjectHistory] = useState([]);
   const [filterTeacher, setFilterTeacher] = useState(null);
   const [filterLevel, setFilterLevel] = useState("");
   const [filterSemester, setFilterSemester] = useState("");
@@ -70,33 +75,102 @@ const ManageSubjects = () => {
     curriculum: { chapters: [{ title: "", sections: [] }] },
     assignedTeacher: null,
     assignedStudent: [],
-    year: new Date().getFullYear(),
+    year: selectedYear || new Date().getFullYear(),
   });
 
-  const fetchData = async () => {
-    setLoading(true);
+const fetchData = async (yearToUse) => {
+  setLoading(true);
+  try {
+    const filters = { year: yearToUse };
+
+    // Fetch active subjects and archived subjects separately
+    const [active, archivedRaw] = await Promise.all([
+      getSubjects(filters), // Active subjects for the selected year
+      getArchivedSubjects(filters), // Archived subjects for the selected year
+    ]);
+
+    // Clean the archived data if it exists
+    const cleanedArchived = Array.isArray(archivedRaw)
+      ? archivedRaw
+      : archivedRaw.archivedSubjects || [];
+
+    // Set subjects correctly based on isArchived flag
+    const activeSubjects = active.filter((subject) => !subject.isArchived);
+    setSubjects(activeSubjects); // Set active subjects correctly
+
+    // Set archived subjects correctly
+    setArchivedSubjects(cleanedArchived); 
+
+    // Fetch subject history for previous years if year is different from current year
+    if (yearToUse !== new Date().getFullYear()) {
+      const subjectHistory = await getSubjectHistory(yearToUse);
+      if (subjectHistory && subjectHistory.archivedSubjects) {
+        setSubjectHistory(subjectHistory.archivedSubjects); // Store historical data in state
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch subject data:", err);
+    Swal.fire("Error", "Failed to load subjects.", "error");
+  } finally {
+    setLoading(false);
+    setCurrentPage(1);
+  }
+};
+
+  // Inside your component or where you're handling the year change
+  const fetchSubjectHistory = async (selectedYear) => {
     try {
-      const [active, archived] = await Promise.all([
-        getSubjects(),
-        getArchivedSubjects(),
-      ]);
-      setSubjects(active || []);
-      setArchivedSubjects(archived.archivedSubjects || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
+      const response = await getSubjectHistory(selectedYear); // Fetch data for the selected year
+      console.log("Subject History Response:", response);
+      // Update the state with the fetched data
+      setSubjectHistory(response.archivedSubjects); // assuming response contains 'archivedSubjects'
+    } catch (error) {
+      console.error("Error fetching subject history:", error);
     }
   };
 
-  const fetchUsers = async () => {
-    const [t, s] = await Promise.all([getTeachers(), getStudents()]);
-    setTeachers(t);
-    setStudents(s);
-  };
+  // Call fetchSubjectHistory when the year changes
+  useEffect(() => {
+    if (selectedYear) {
+      fetchSubjectHistory(selectedYear); // Fetch history for the selected year
+    }
+  }, [selectedYear]);
 
   useEffect(() => {
-    fetchData();
+    const loadYears = async () => {
+      const token = localStorage.getItem("token");
+      const response = await fetchAvailableYears(token);
+
+      const nowYear = new Date().getFullYear();
+      // If API gives you a non‐empty array, use that.
+      // Otherwise fall back to [nowYear].
+      const yearsArray =
+        Array.isArray(response) && response.length > 0 ? response : [nowYear];
+
+      setAvailableYears(yearsArray);
+
+      // latestYear is always the max of the academic years
+      const latest = Math.max(...yearsArray);
+      setLatestYear(latest);
+      setSelectedYear(latest);
+
+      fetchData(latest);
+    };
+
+    loadYears();
+  }, []);
+
+  const fetchUsers = async () => {
+    const [t] = await Promise.all([getTeachers(), getStudents()]);
+    setTeachers(t);
+    // setStudents(s);
+  };
+  useEffect(() => {
+    if (selectedYear !== null) {
+      setForm((f) => ({ ...f, year: selectedYear }));
+    }
+  }, [selectedYear]);
+  useEffect(() => {
     fetchUsers();
   }, []);
 
@@ -165,6 +239,7 @@ const ManageSubjects = () => {
       option: form.option?.value || null,
       assignedTeacher: form.assignedTeacher?.value || null,
       assignedStudent: form.assignedStudent.map((s) => s.value),
+      year: form.year,
     };
 
     try {
@@ -177,7 +252,7 @@ const ManageSubjects = () => {
       setShowModal(false);
       setEditingSubject(null);
       resetForm();
-      fetchData();
+      fetchData(selectedYear);
 
       Swal.fire(
         "Success",
@@ -212,7 +287,7 @@ const ManageSubjects = () => {
     if (confirm.isConfirmed) {
       try {
         await validateProposition(id); // calls subject.service.js
-        await fetchData(); // refresh list after validation
+        await fetchData(selectedYear); // refresh list after validation
         Swal.fire("Success", "Proposition has been validated.", "success");
       } catch (err) {
         Swal.fire(
@@ -232,7 +307,7 @@ const ManageSubjects = () => {
       curriculum: { chapters: [{ title: "", sections: [] }] },
       assignedTeacher: null,
       assignedStudent: [],
-      year: new Date().getFullYear(),
+      year: selectedYear || new Date().getFullYear(), // Fallback in case selectedYear is not set
     });
   };
 
@@ -320,7 +395,7 @@ const ManageSubjects = () => {
     if (confirm.isConfirmed) {
       try {
         await deleteSubject(id);
-        await fetchData();
+        await fetchData(selectedYear);
         Swal.fire("Deleted!", "Subject deleted successfully.", "success");
       } catch (err) {
         const msg = err.response?.data?.message || "Delete failed";
@@ -340,7 +415,7 @@ const ManageSubjects = () => {
           if (archiveConfirm.isConfirmed) {
             try {
               await deleteSubject(id, true);
-              await fetchData();
+              await fetchData(selectedYear);
               Swal.fire(
                 "Archived!",
                 "Subject archived instead of deleted.",
@@ -408,7 +483,7 @@ const ManageSubjects = () => {
   const handleTogglePublish = async (publish) => {
     try {
       await publishUnpublishSubjects(publish ? "publish" : "unpublish");
-      await fetchData();
+      await fetchData(selectedYear);
       Swal.fire(
         "Success",
         `Subjects have been ${publish ? "published" : "unpublished"} successfully.`,
@@ -449,7 +524,7 @@ const ManageSubjects = () => {
         .some((s) => !s.isPublished); // matches global publish state
 
       await restoreSubject(id, shouldPublish);
-      fetchData();
+      fetchData(selectedYear);
       Swal.fire("Restored!", "Subject has been restored.", "success");
     } catch (err) {
       Swal.fire(
@@ -460,22 +535,36 @@ const ManageSubjects = () => {
     }
   };
 
-  const baseSubjects =
-    tab === "active" ? subjects.filter((s) => !s.isArchived) : archivedSubjects;
+const isHistoryYear = selectedYear !== null && selectedYear !== latestYear;
 
-  const filtered = baseSubjects
-    .filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()))
-    .filter((s) =>
-      filterTeacher ? s.assignedTeacher?._id === filterTeacher.value : true
-    )
-    .filter((s) => (filterLevel ? s.level === filterLevel : true))
-    .filter((s) => (filterSemester ? s.semester === filterSemester : true));
+// Render the filtered and paginated subjects
+let entries;
+if (tab === "active") {
+  entries = subjects; // Active subjects for the selected year
+} else if (tab === "archived") {
+  entries = archivedSubjects; // Archived subjects for the selected year
+} else {
+  // For propositions and evaluations, check if it's history year
+  entries = isHistoryYear ? archivedSubjects : subjects;
+}
 
-  const pageCount = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginated = filtered.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+const baseSubjects = entries;
+
+// Filter and paginate the subjects based on selected filters
+const filtered = baseSubjects
+  .filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()))
+  .filter((s) =>
+    filterTeacher ? s.assignedTeacher?._id === filterTeacher.value : true
+  )
+  .filter((s) => (filterLevel ? s.level === filterLevel : true))
+  .filter((s) => (filterSemester ? s.semester === filterSemester : true));
+
+const pageCount = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+const paginated = filtered.slice(
+  (currentPage - 1) * ITEMS_PER_PAGE,
+  currentPage * ITEMS_PER_PAGE
+);
+
 
   const renderPagination = () => {
     const pages = [];
@@ -605,6 +694,7 @@ const ManageSubjects = () => {
                   resetForm();
                   setShowModal(true);
                 }}
+                disabled={isHistoryYear}
               >
                 + Add Subject
               </Button>
@@ -614,7 +704,7 @@ const ManageSubjects = () => {
                     ? "secondary"
                     : "dark"
                 }
-                disabled={!hasActiveSubjects}
+                disabled={!hasActiveSubjects || isHistoryYear}
                 onClick={() =>
                   handleTogglePublish(
                     activeSubjects.some((s) => !s.isPublished)
@@ -630,7 +720,7 @@ const ManageSubjects = () => {
                 variant="success"
                 className="ms-2"
                 onClick={handleSendEvaluationEmails}
-                disabled={!hasActiveSubjects}
+                disabled={!hasActiveSubjects || isHistoryYear}
               >
                 📧 Send Evaluation Emails
               </Button>
@@ -641,48 +731,89 @@ const ManageSubjects = () => {
 
       <Row className="mb-3">
         <Col md={3}>
+          {!isHistoryYear && (
+            <Select
+              options={baseSubjects
+                .filter((s) => s.assignedTeacher)
+                .map((s) => s.assignedTeacher)
+                .filter(
+                  (t, i, arr) => arr.findIndex((x) => x._id === t._id) === i
+                ) // remove duplicates
+                .map((t) => ({
+                  label: `${t.firstName} ${t.lastName}`,
+                  value: t._id,
+                }))}
+              isClearable
+              placeholder="Filter by Teacher"
+              value={filterTeacher}
+              onChange={setFilterTeacher}
+            />
+          )}
+        </Col>
+
+        <Col md={3}>
+          {!isHistoryYear && (
+            <Select
+              options={[...new Set(baseSubjects.map((s) => s.level))].map(
+                (level) => ({
+                  label: `Level ${level}`,
+                  value: level,
+                })
+              )}
+              isClearable
+              placeholder="Filter by Level"
+              value={
+                filterLevel
+                  ? { value: filterLevel, label: `Level ${filterLevel}` }
+                  : null
+              }
+              onChange={(selected) => setFilterLevel(selected?.value || "")}
+            />
+          )}
+        </Col>
+
+        <Col md={3}>
+          {!isHistoryYear && (
+            <Select
+              options={[...new Set(baseSubjects.map((s) => s.semester))].map(
+                (sem) => ({
+                  label: sem,
+                  value: sem,
+                })
+              )}
+              isClearable
+              placeholder="Filter by Semester"
+              value={
+                filterSemester
+                  ? { value: filterSemester, label: filterSemester }
+                  : null
+              }
+              onChange={(selected) => setFilterSemester(selected?.value || "")}
+            />
+          )}
+        </Col>
+
+        <Col md={3}>
           <Select
-            options={baseSubjects
-              .filter((s) => s.assignedTeacher)
-              .map((s) => s.assignedTeacher)
-              .filter(
-                (t, i, arr) => arr.findIndex((x) => x._id === t._id) === i
-              ) // remove duplicates
-              .map((t) => ({
-                label: `${t.firstName} ${t.lastName}`,
-                value: t._id,
-              }))}
+            options={availableYears.map((year) => ({
+              label: year.toString(),
+              value: year,
+            }))}
             isClearable
-            placeholder="Filter by Teacher"
-            value={filterTeacher}
-            onChange={setFilterTeacher}
+            placeholder="Select Year"
+            value={
+              selectedYear !== null
+                ? { value: selectedYear, label: selectedYear.toString() }
+                : null
+            }
+            onChange={(selectedOption) => {
+              const newYear = selectedOption?.value ?? null;
+              setSelectedYear(newYear); // Update the selected year state
+              if (newYear !== null) {
+                fetchData(newYear); // Fetch data for the selected year
+              }
+            }}
           />
-        </Col>
-        <Col md={3}>
-          <Form.Select
-            value={filterLevel}
-            onChange={(e) => setFilterLevel(e.target.value)}
-          >
-            <option value="">All Levels</option>
-            {[...new Set(baseSubjects.map((s) => s.level))].map((level, i) => (
-              <option key={i} value={level}>
-                {level}
-              </option>
-            ))}
-          </Form.Select>
-        </Col>
-        <Col md={3}>
-          <Form.Select
-            value={filterSemester}
-            onChange={(e) => setFilterSemester(e.target.value)}
-          >
-            <option value="">All Semesters</option>
-            {[...new Set(baseSubjects.map((s) => s.semester))].map((sem, i) => (
-              <option key={i} value={sem}>
-                {sem}
-              </option>
-            ))}
-          </Form.Select>
         </Col>
       </Row>
 
@@ -729,7 +860,6 @@ const ManageSubjects = () => {
                           </Button>
                         )}
                     </td>
-
                     <td>{subject.level}</td>
                     <td>{latest?.changes?.level || "-"}</td>
                     <td>{subject.semester}</td>
@@ -888,6 +1018,92 @@ const ManageSubjects = () => {
                             size="sm"
                             className="me-2"
                             onClick={() => handleViewDetails(subject._id)}
+                          >
+                            Details
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          variant="success"
+                          size="sm"
+                          onClick={() => handleRestore(subject._id)}
+                        >
+                          Restore
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+
+                {/* Subject History Display */}
+                {subjectHistory.map((history, index) => (
+                  <tr key={history._id}>
+                    <td>{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</td>
+                    <td>{history.title}</td>
+                    <td>{history.level}</td>
+                    <td>{history.semester}</td>
+                    <td>{history.year}</td>
+                    <td>
+                      {history.assignedTeacher
+                        ? `${history.assignedTeacher.firstName} ${history.assignedTeacher.lastName}`
+                        : "-"}
+                    </td>
+                    <td>
+                      <Button
+                        variant="outline-info"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedStudents(history.assignedStudent || []);
+                          setShowStudentsModal(true);
+                        }}
+                      >
+                        View ({history.assignedStudent?.length || 0})
+                      </Button>
+                    </td>
+
+                    <td>
+                      <Button
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedCurriculum(history.curriculum);
+                          setShowCurriculumModal(true);
+                        }}
+                      >
+                        View ({history.curriculum?.chapters?.length || 0})
+                      </Button>
+                    </td>
+                    <td>
+                      {tab === "active" ? (
+                        <>
+                          <Button
+                            variant="warning"
+                            size="sm"
+                            className="me-2"
+                            onClick={() => handleEdit(subject)}
+                            disabled={isHistoryYear}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() =>
+                              handleDelete(
+                                subject._id,
+                                !!subject.assignedTeacher
+                              )
+                            }
+                            disabled={isHistoryYear}
+                          >
+                            Delete
+                          </Button>
+                          <Button
+                            variant="info"
+                            size="sm"
+                            className="me-2"
+                            onClick={() => handleViewDetails(subject._id)}
+                            disabled={isHistoryYear}
                           >
                             Details
                           </Button>
@@ -1140,7 +1356,7 @@ const ManageSubjects = () => {
                         {ev.score} / 10
                       </span>
                     </div> */}
-<div>
+                    <div>
                       <strong>Score:</strong>{" "}
                       <span
                         className={`badge ${
@@ -1230,6 +1446,7 @@ const ManageSubjects = () => {
           </Modal.Title>
         </Modal.Header>
         <Form onSubmit={handleSubmit}>
+          {/* <Form.Control  name="year" value={form.year} /> */}
           <Modal.Body>
             <Form.Group className="mb-3">
               <Form.Label>Title</Form.Label>
@@ -1265,23 +1482,23 @@ const ManageSubjects = () => {
                   />
                 </Form.Group>
 
-                {form.level?.value > 1 && (
+                {((form.level?.value === 2 &&
+                  form.semester === "2nd Semester") ||
+                  form.level?.value === 3) && (
                   <Form.Group className="mb-3">
                     <Form.Label>Option</Form.Label>
                     <Select
                       options={optionOptions}
                       value={form.option}
                       onChange={(selected) => {
-                        const lvl = form.level?.value;
-                        const opt = selected?.value;
-                        setForm((prev) => ({
-                          ...prev,
+                        const lvl = form.level.value;
+                        const opt = selected.value;
+                        setForm((f) => ({
+                          ...f,
                           option: selected,
                           assignedStudent: [],
                         }));
-                        if (lvl && opt) {
-                          fetchStudentsAutoFill(lvl, opt);
-                        }
+                        if (lvl && opt) fetchStudentsAutoFill(lvl, opt);
                       }}
                       isClearable
                     />
@@ -1358,10 +1575,7 @@ const ManageSubjects = () => {
               <Form.Label>Assigned Students</Form.Label>
               <Select
                 isMulti
-                isDisabled={
-                  !form.level?.value ||
-                  (form.level?.value > 1 && !form.option?.value)
-                }
+                isDisabled={true}
                 options={filteredStudents}
                 value={form.assignedStudent}
                 onChange={(selected) =>
@@ -1393,6 +1607,7 @@ const ManageSubjects = () => {
                     className="mb-1"
                     value={sec}
                     onChange={(e) => handleSectionChange(i, j, e.target.value)}
+                    disabled={isHistoryYear}
                   />
                 ))}
                 <Button size="sm" variant="link" onClick={() => addSection(i)}>
@@ -1413,10 +1628,16 @@ const ManageSubjects = () => {
               variant="primary"
               type="submit"
               disabled={
+                // if we're viewing history
+                isHistoryYear ||
+                // basic form validation
                 !form.title.trim() ||
                 !form.level?.value ||
                 (Number(form.level?.value) >= 2 && !form.option?.value) ||
-                !form.semester?.trim() ||
+                !form.semester.trim() ||
+                // make sure a teacher is picked
+                !form.assignedTeacher?.value ||
+                // curriculum sanity
                 form.curriculum.chapters.length < 1 ||
                 !form.curriculum.chapters[0].title.trim() ||
                 form.curriculum.chapters[0].sections.length < 1 ||

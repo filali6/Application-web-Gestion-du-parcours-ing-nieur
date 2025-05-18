@@ -26,6 +26,7 @@ import {
   getStudentsByLevelAndOption,
   getSubjectById,
   getSubjectProgress,
+  getSubjectHistory,
 } from "../../controllers/skills&subjectsController.js/subjectController.js";
 import { validateSubject } from "../../joiValidations/SubjectValidation.js";
 import { yearFilter } from "../../middlewares/year.js";
@@ -46,7 +47,7 @@ router.get(
   loggedMiddleware,
   isAdmin,
   yearFilter,
-  getArchivedSubjects 
+  getArchivedSubjects
 );
 router.post(
   "/publish/:response",
@@ -61,9 +62,14 @@ router.post(
   updateSubjectProgress
 );
 router.post("/:id/evaluation", loggedMiddleware, isStudent, addEvaluation);
-router.get("/byLevelOption", loggedMiddleware, isAdmin, getStudentsByLevelAndOption);
+router.get(
+  "/byLevelOption",
+  loggedMiddleware,
+  isAdmin,
+  getStudentsByLevelAndOption
+);
 
-
+router.get("/history", loggedMiddleware, isAdmin, getSubjectHistory);
 router.get(
   "/:id/evaluation",
   loggedMiddleware,
@@ -83,11 +89,8 @@ router.patch("/:id", loggedMiddleware, isAdmin, updateSubject);
 router.delete("/:id", loggedMiddleware, isAdmin, deleteSubject);
 router.patch("/:id/restore", loggedMiddleware, isAdmin, restoreSubject);
 
-router.get('/:id/SubjectId', loggedMiddleware, isTeacher, getSubjectById);
-router.get('/:id/SubjectId', loggedMiddleware, isTeacher, getSubjectById);
+router.get("/:id/SubjectId", loggedMiddleware, isTeacher, getSubjectById);
+router.get("/:id/SubjectId", loggedMiddleware, isTeacher, getSubjectById);
 router.get("/:id/progress", loggedMiddleware, isStudent, getSubjectProgress);
-
-
-
 
 export default router;

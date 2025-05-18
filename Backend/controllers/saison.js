@@ -46,66 +46,60 @@ export const updateStudentStatus = async (req, res) => {
 export const createNewYear = async (req, res) => {
   try {
     const { year } = req.body;
-
-    if (!year || typeof year !== "number") {
-      return res
-        .status(400)
-        .json({ message: "Veuillez fournir une année valide." });
-    }
-
     const currentYear = new Date().getFullYear();
-    if (year !== currentYear + 3) {
+
+    // 1) Validate year payload
+    if (!year || typeof year !== "number") {
+      return res.status(400).json({ message: "Veuillez fournir une année valide." });
+    }
+    if (year !== currentYear + 1) {
       return res.status(400).json({
         message: "L'année doit être exactement l'année actuelle + 1.",
       });
     }
 
-    const existingYearData = await Subject.findOne({ year });
-    if (existingYearData) {
+    // 2) Prevent duplicate academic year
+    const exists = await Subject.findOne({ year });
+    if (exists) {
       return res.status(400).json({ message: "Cette année existe déjà." });
     }
 
+    // 3) Ensure *all* students have a status defined
+    //    (we no longer filter by level—you can reinstate that if needed)
     const studentsWithoutStatus = await Student.find({
-      level: { $in: [1, 2] },
-      status: { $in: [null, undefined] },
+      status: { $in: [null, undefined] }
     });
-
-    if (studentsWithoutStatus.length > 0) {
+    if (studentsWithoutStatus.length) {
       return res.status(400).json({
-        message:
-          "Tous les étudiants de niveau 1 et 2 doivent avoir un statut défini avant de créer une nouvelle année.",
+        message: "Tous les étudiants doivent avoir un statut défini avant de créer une nouvelle année.",
         studentsWithoutStatus,
       });
     }
 
+    // 4) Push current state into each student’s history and reset for next year
     const students = await Student.find();
     await Promise.all(
       students.map(async (student) => {
-        const previousLevel = student.level || 1;
-        const previousStatus = student.status || "pending";
-        const previousYear = student.year || currentYear;
+        const prevYear   = student.year  || currentYear;
+        const prevLevel  = student.level || 1;
+        const prevStatus = student.status;
 
         student.history = student.history || [];
         student.history.push({
-          year: previousYear,
-          level: previousLevel,
-          status: previousStatus,
+          year:           prevYear,
+          level:          prevLevel,
+          status:         prevStatus,
           successSession: student.successSession || null,
         });
 
         student.year = year;
+        // adjust level/status for progression...
         if (student.status !== "diplomé") {
-          if (student.status === "redouble") {
-            // Level remains the same
-          } else if (
-            student.status === "passe" &&
-            (previousLevel === 1 || previousLevel === 2)
-          ) {
-            student.level = previousLevel + 1;
-          } else if (student.status === "passe" && previousLevel === 3) {
-            student.status = "diplomé";
+          if (student.status === "passe") {
+            student.level = prevLevel < 3 ? prevLevel + 1 : prevLevel;
+            if (prevLevel === 3) student.status = "diplomé";
           }
-          if (student.status !== "diplomé") {
+          if (!["diplomé","redouble"].includes(student.status)) {
             student.status = null;
           }
         }
@@ -114,57 +108,71 @@ export const createNewYear = async (req, res) => {
       })
     );
 
+    // 5) Update teachers via updateOne (avoids missing password errors)
     const teachers = await Teacher.find();
     await Promise.all(
       teachers.map(async (teacher) => {
-        const previousYear = teacher.year || currentYear;
-        const previousGrade = teacher.grade || null;
+        const prevYear  = teacher.year  || currentYear;
+        const prevGrade = teacher.grade || null;
 
-        teacher.history = teacher.history || [];
-        teacher.history.push({
-          year: previousYear,
-          grade: previousGrade,
-        });
-
-        teacher.year = year;
-        await teacher.save();
+        await Teacher.updateOne(
+          { _id: teacher._id },
+          {
+            $set: { year },
+            $push: { history: { year: prevYear, grade: prevGrade } },
+          }
+        );
       })
     );
 
+    // 6) Archive subjects (including isArchived) then reset them
     const subjects = await Subject.find();
     await Promise.all(
       subjects.map(async (subject) => {
-        subject.archive = subject.archive || [];
-        subject.archive.push({
-          year: subject.year || currentYear,
+        const archiveEntry = {
+          year:            subject.year || currentYear,
+          title:           subject.title,
+          level:           subject.level,
+          semester:        subject.semester,
+          option:          subject.option || null,
+          curriculum:      subject.curriculum || { chapters: [] },
           assignedTeacher: subject.assignedTeacher,
           assignedStudent: subject.assignedStudent || [],
-        });
+          evaluations:     subject.evaluations || [],
+          isArchived:      subject.isArchived || false,
+          archivedAt:      new Date(),
+        };
 
-        subject.year = year;
-        subject.assignedTeacher = null;
-        subject.assignedStudent = [];
-        await subject.save();
+        await Subject.updateOne(
+          { _id: subject._id },
+          {
+            $set: {
+              year,
+              assignedTeacher: null,
+              assignedStudent: [],
+              isArchived:      false,
+            },
+            $unset: { level: "", semester: "", option: "" },
+            $push: { archive: archiveEntry },
+          }
+        );
       })
     );
 
-    res.status(201).json({
-      message:
-        "Nouvelle année créée avec succès pour les étudiants, les enseignants et les matières.",
+    // 7) Success
+    return res.status(201).json({
+      message: "Nouvelle année créée avec succès pour étudiants, enseignants et matières.",
       year,
     });
   } catch (error) {
-    console.error(
-      "Erreur lors de la création de la nouvelle année :",
-      error.message,
-      error.stack
-    );
-    res.status(500).json({
+    console.error("Erreur lors de la création de la nouvelle année :", error);
+    return res.status(500).json({
       message: "Erreur serveur lors de la création de la nouvelle année.",
-      error: error.message,
+      error:   error.message,
     });
   }
 };
+
 
 export const getAvailableYears = async (req, res) => {
   try {
