@@ -105,7 +105,7 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
     );
   };
 
-  const markAsCompleted = async (chapterTitle, sectionText = null) => {
+const markAsCompleted = async (chapterTitle, sectionText = null) => {
     try {
       const chapterIndex = subjectData.curriculum.chapters.findIndex(
         (ch) => ch.title === chapterTitle
@@ -220,7 +220,6 @@ const SubjectDetailsModal = ({ subject, show, onHide, currentUser }) => {
       });
     }
   };
-
   const addSection = () => {
     if (sectionText.trim()) {
       setChapterSections([...chapterSections, sectionText.trim()]);
