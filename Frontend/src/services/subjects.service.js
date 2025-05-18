@@ -13,8 +13,11 @@ const getAuthHeader = () => {
   };
 };
 
-export const getSubjects = async () => {
-  const res = await axios.get(`${API_BASE}/subjects`, getAuthHeader());
+export const getSubjects = async (filters = {}) => {
+  const res = await axios.get(`${API_BASE}/subjects`, {
+    params: filters,
+    ...getAuthHeader(),
+  });
   return res.data;
 };
 
@@ -62,11 +65,13 @@ export const updateSubjectProgress = async (id, completedSections) => {
   return res.data;
 };
 
-export const getArchivedSubjects = async () => {
-  const res = await axios.get(`${API_BASE}/subjects/archived`, getAuthHeader());
+export const getArchivedSubjects = async (filters = {}) => {
+  const res = await axios.get(`${API_BASE}/subjects/archived`, {
+    params: filters, // Pass the filters including year to the backend
+    ...getAuthHeader(),
+  });
   return res.data;
 };
-
 
 export const addSubjectEvaluation = async (id, data) => {
   const res = await axios.post(`${API_BASE}/subjects/${id}/evaluation`, data, getAuthHeader());
@@ -124,6 +129,7 @@ export const fetchStudentsByLevelAndOption = async (level, option = null) => {
 };
 
 export const fetchSubjects = async (filters = {}) => {
+  // eslint-disable-next-line no-useless-catch
   try {
     const response = await api.get("/", { params: filters });
     return response.data;
@@ -143,3 +149,12 @@ export const getSubjectProgress = async (id) => {
   return res.data;
 };
 
+
+
+export const getSubjectHistory = async (year) => {
+  const res = await axios.get(`${API_BASE}/subjects/history`, {
+    params: { year },
+    ...getAuthHeader(),
+  });
+  return res.data;
+};

@@ -111,6 +111,14 @@ const subjectSchema = mongoose.Schema({
   archive: [
     {
       year: { type: Number },
+      title: { type: String },
+      level: { type: String },
+      semester: { type: String },
+      option: {
+        type: String,
+        enum: ["inLog", "inRev", null],
+        default: null,
+      },
       assignedTeacher: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Teacher",
@@ -123,11 +131,27 @@ const subjectSchema = mongoose.Schema({
           default: null,
         },
       ],
+      curriculum: {
+        chapters: [
+          {
+            title: { type: String },
+            sections: [{ type: String }],
+          },
+        ],
+      },
+      evaluations: [
+        {
+          feedback: { type: String },
+          score: { type: Number },
+          hashedStudentId: { type: String },
+        },
+      ],
+      isArchived: { type: Boolean, default: false },
     },
   ],
+
   year: { type: Number },
   assignedTeacherHasAdvanced: { type: Boolean, default: false },
-
 });
 
 export default mongoose.model("Subject", subjectSchema);
