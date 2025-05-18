@@ -3,7 +3,7 @@ import Period from "../models/Period.js";
 import Student from "../models/Student.js";
 import Teacher from "../models/Teacher.js";
 import CV from "../models/cv.js";
-
+import PlanningPfa from "../models/PlanningPfa.js";
 import { sendEmail } from "../notifyWithMail/sendMailPFA.js";
 
 /**
@@ -1016,86 +1016,137 @@ export const selectPfaChoice = async (req, res) => {
   }
 };
 
+
+
+
+
 export const generatePlanning = async (req, res) => {
   try {
     const { rooms, dates } = req.body;
 
+    if (!rooms || rooms.length === 0 || !dates || dates.length === 0) {
+      return res.status(400).json({ message: "Rooms and dates are required." });
+    }
+
+    // 1. Vérifier que la période de choix est bien fermée
     const period = await Period.findOne({
       type: "choicePFA",
       EndDate: { $lt: new Date() },
     });
+
     if (!period) {
       return res.status(400).json({
         message:
           "The period of choice is not closed. Please close it before generating the planning.",
       });
     }
-    if (!rooms || rooms.length === 0 || !dates || dates.length === 0) {
-      return res.status(400).json({ message: "Rooms and dates are required." });
+    await PlanningPfa.deleteMany({});
+
+    // 2. Récupérer tous les projets validés avec encadrant
+    const projects = await PFA.find({ status: "published", teacher: { $ne: null } }).populate("teacher");
+
+    if (projects.length === 0) {
+      return res.status(404).json({ message: "No published projects found." });
     }
 
-    const projects = await PFA.find({ status: "published" }).populate(
-      "teacher"
-    );
-    const totalProjects = projects.length;
+    // 3. Préparer les créneaux horaires
+    const startTime = 8 * 60 + 30; // 8h30 en minutes
+    const endTime = 15 * 60; // 15h00 en minutes
+    const slotDuration = 30;
+    const slotsPerDay = Math.floor((endTime - startTime) / slotDuration); // 13 slots par salle
 
-    const maxSoutenancesPerDay = 6;
-    const availableDays = dates.length;
-    const maxPossibleSoutenances = availableDays * maxSoutenancesPerDay;
-
-    if (totalProjects > maxPossibleSoutenances) {
-      return res.status(400).json({
-        message: `Unable to schedule all defenses. The number of defenses (${totalProjects}) exceeds the maximum capacity of the given days (${maxPossibleSoutenances}).`,
-      });
-    }
-
-    let schedule = [];
-    let projectIndex = 0;
-    let currentRoomIndex = 0;
-    let timeSlot = 1;
-    const soutenancesPerDay = Math.ceil(totalProjects / availableDays);
-
-    for (let k = 1; k <= soutenancesPerDay; k++) {
-      if (currentRoomIndex >= rooms.length) {
-        currentRoomIndex = 0;
-        timeSlot++;
-      }
-
-      for (let i = 0; i < dates.length; i++) {
-        if (projectIndex >= totalProjects) break;
-
-        const project = projects[projectIndex];
-        const reporter =
-          projects[(projectIndex + 1) % totalProjects].teacher.id;
-
-        const planningEntry = new PlanningPfa({
-          project: project._id,
-          encadrant: project.teacher.id,
-          rapporteur: reporter,
-          date: dates[i],
-          room: rooms[currentRoomIndex],
-          timeSlot: timeSlot,
-          duration: 30,
-        });
-
-        await planningEntry.save();
-        schedule.push(planningEntry);
-        projectIndex++;
-      }
-      currentRoomIndex++;
-    }
-
-    return res.status(200).json({
-      message: `${schedule.length} plannings successfully generated.`,
-      schedule,
+    const timeSlots = Array.from({ length: slotsPerDay }, (_, i) => {
+      const totalMinutes = startTime + i * slotDuration;
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
     });
+
+    // 4. Suivi des disponibilités
+    const teacherDayCount = {}; // {teacherId_date: number}
+    const roomDateTimeUsed = new Set(); // "room|date|time"
+    const teacherOccupied = new Set(); // "teacherId|date|time"
+
+    // 5. Liste des enseignants disponibles (à utiliser comme rapporteurs)
+    const allTeachers = await Teacher.find({});
+    const teacherIds = allTeachers.map(t => t._id.toString());
+
+    const plannings = [];
+
+    for (const project of projects) {
+      let assigned = false;
+
+      for (const date of dates) {
+        for (const time of timeSlots) {
+          for (const room of rooms) {
+            const roomKey = `${room}|${date}|${time}`;
+            const encadrantKey = `${project.teacher._id}|${date}|${time}`;
+            const encadrantCountKey = `${project.teacher._id}|${date}`;
+
+            // Skip si la salle ou l'encadrant est occupé
+            if (roomDateTimeUsed.has(roomKey)) continue;
+            if (teacherOccupied.has(encadrantKey)) continue;
+            if ((teacherDayCount[encadrantCountKey] || 0) >= 6) continue;
+
+            // Sélection d'un rapporteur différent et disponible
+            const possibleRapporteurs = teacherIds.filter(tid => 
+              tid !== project.teacher._id.toString() &&
+              !teacherOccupied.has(`${tid}|${date}|${time}`) &&
+              (teacherDayCount[`${tid}|${date}`] || 0) < 6
+            );
+
+            if (possibleRapporteurs.length === 0) continue;
+
+            const rapporteurId = possibleRapporteurs[Math.floor(Math.random() * possibleRapporteurs.length)];
+
+            // Mise à jour des disponibilités
+            roomDateTimeUsed.add(roomKey);
+            teacherOccupied.add(encadrantKey);
+            teacherOccupied.add(`${rapporteurId}|${date}|${time}`);
+
+            teacherDayCount[encadrantCountKey] = (teacherDayCount[encadrantCountKey] || 0) + 1;
+            teacherDayCount[`${rapporteurId}|${date}`] = (teacherDayCount[`${rapporteurId}|${date}`] || 0) + 1;
+
+            // Création du planning
+            plannings.push({
+              project: project._id,
+              encadrant: project.teacher._id,
+              rapporteur: rapporteurId,
+              date,
+              room,
+              time,
+              duration: 30,
+            });
+
+            assigned = true;
+            break;
+          }
+          if (assigned) break;
+        }
+        if (assigned) break;
+      }
+
+      if (!assigned) {
+        console.warn(`Could not schedule project: ${project.title}`);
+      }
+    }
+
+    // 6. Enregistrer tous les plannings générés
+    await PlanningPfa.insertMany(plannings);
+
+    res.status(201).json({
+      message: "Planning generated successfully.",
+      count: plannings.length,
+      plannings,
+    });
+
   } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Error generating the planning.", error });
+    console.error("Error generating planning:", error);
+    res.status(500).json({ message: "Server error." });
   }
 };
+
+
 
 export const getPlanningByTeacher = async (req, res) => {
   try {
@@ -1181,7 +1232,7 @@ export const getPlanningByStudent = async (req, res) => {
     });
   }
 };
-
+/*
 export const publishOrUnpublishPlannings = async (req, res) => {
   try {
     const { response } = req.params;
@@ -1252,6 +1303,7 @@ export const publishOrUnpublishPlannings = async (req, res) => {
     });
   }
 };
+*/
 
 const sendEmailsToInvolved = async (
   subject,
@@ -1314,139 +1366,97 @@ const sendEmailsToInvolved = async (
     nbrEmailSentTeachers: `${sentTeachers}/${sentTeachers + failedTeachers}`,
   };
 };
+
 export const modifyPlanning = async (req, res) => {
   try {
-    const { encadrant, rapporteur, room, date, timeSlot } = req.body;
     const { id } = req.params;
 
-    const existingPlanning = await PlanningPfa.findById(id);
-    if (!existingPlanning) {
-      return res.status(404).json({ message: "Planning entry not found." });
+    const {  date, time, room, duration, encadrant, rapporteur } = req.body;
+    console.log("hhh",  req.body)
+
+    // Vérification des champs requis
+    if ( !date || !time || !room || !duration || !encadrant || !rapporteur) {
+      return res.status(400).json({
+        message: "Tous les champs sont requis.",
+      });
     }
 
-    let planningUpdated = {};
-
-    planningUpdated.encadrant = encadrant || existingPlanning.encadrant;
-    planningUpdated.rapporteur = rapporteur || existingPlanning.rapporteur;
-    planningUpdated.room = room || existingPlanning.room;
-    planningUpdated.date = date || existingPlanning.date;
-    planningUpdated.timeSlot = timeSlot || existingPlanning.timeSlot;
-
-    let conflictingPlanning = null;
-
-    if (!date && !rapporteur) {
-      conflictingPlanning = await PlanningPfa.findOne({
-        room: planningUpdated.room,
-        date: planningUpdated.date,
-        timeSlot: planningUpdated.timeSlot,
+    if (encadrant === rapporteur) {
+      return res.status(400).json({
+        message: "L'encadrant et le rapporteur doivent être différents.",
       });
-      if (conflictingPlanning) {
-        return res.status(400).json({
-          message:
-            "Conflict detected: The selected room, date, or time slot is already occupied.",
-        });
+    }
+
+    // Récupération du planning existant
+    const planning = await PlanningPfa.findById(id);
+
+    if (!planning) {
+      return res.status(404).json({ message: "Planning introuvable." });
+    }
+
+    const startMinutes = convertTimeToMinutes(time);
+    const endMinutes = startMinutes + duration;
+
+    // Récupération des autres plannings le même jour
+    const sameDayPlannings = await PlanningPfa.find({
+      _id: { $ne: id },
+      date,
+    });
+
+    for (const other of sameDayPlannings) {
+      const otherStart = convertTimeToMinutes(other.time);
+      const otherEnd = otherStart + other.duration;
+
+      const overlap = Math.max(0, Math.min(endMinutes, otherEnd) - Math.max(startMinutes, otherStart)) > 0;
+
+      if (overlap) {
+        // 🔒 Conflit de salle
+        if (other.room === room) {
+          return res.status(400).json({
+            message: `Conflit : La salle ${room} est déjà occupée à ${other.time}.`,
+          });
+        }
+
+        // 🔒 Conflit d'enseignant
+        const encadrants = [other.encadrant?.toString(), other.rapporteur?.toString()];
+        if (encadrants.includes(encadrant) || encadrants.includes(rapporteur)) {
+          return res.status(400).json({
+            message: `Conflit : L'encadrant ou le rapporteur est déjà assigné à une autre soutenance à ${other.time}.`,
+          });
+        }
       }
     }
 
-    if (date) {
-      const existingSoutenancesForDay = await PlanningPfa.countDocuments({
-        date: date,
-      });
+    // ✅ Mise à jour du planning
+    planning.date = date;
+    planning.time = time;
+    planning.room = room;
+    planning.duration = duration;
+    planning.encadrant = encadrant;
+    planning.rapporteur = rapporteur;
 
-      if (existingSoutenancesForDay >= 6) {
-        return res.status(400).json({
-          message:
-            "This day is already fully booked with 6 soutenances. No more soutenances can be scheduled on this day.",
-        });
-      }
-
-      conflictingPlanning = await PlanningPfa.findOne({
-        room: planningUpdated.room,
-        date: planningUpdated.date,
-        timeSlot: planningUpdated.timeSlot,
-      });
-      if (conflictingPlanning) {
-        return res.status(400).json({
-          message:
-            "Conflict detected: The selected room, date, or time slot is already occupied.",
-        });
-      }
-    }
-
-    if (rapporteur) {
-      conflictingPlanning = await PlanningPfa.findOne({
-        rapporteur: rapporteur,
-        date: existingPlanning.date,
-        timeSlot: existingPlanning.timeSlot,
-        _id: { $ne: existingPlanning._id },
-      });
-      if (conflictingPlanning) {
-        return res.status(400).json({
-          message:
-            "Conflict detected: The selected rapporteur is already occupied at the same time and date.",
-        });
-      }
-    }
-
-    if (rapporteur) {
-      conflictingPlanning = await PlanningPfa.findOne({
-        encadrant: rapporteur,
-        date: existingPlanning.date,
-        timeSlot: existingPlanning.timeSlot,
-        _id: { $ne: existingPlanning._id },
-      });
-      if (conflictingPlanning) {
-        return res.status(400).json({
-          message:
-            "Conflict detected: The selected encadrant is already occupied at the same time and date.",
-        });
-      }
-    }
-
-    existingPlanning.encadrant = planningUpdated.encadrant;
-    existingPlanning.rapporteur = planningUpdated.rapporteur;
-    existingPlanning.room = planningUpdated.room;
-    existingPlanning.date = planningUpdated.date;
-    existingPlanning.timeSlot = planningUpdated.timeSlot;
-
-    await existingPlanning.save();
+    await planning.save();
 
     return res.status(200).json({
-      message: "Planning updated successfully.",
-      planning: existingPlanning,
+      message: "Planning modifié avec succès.",
+      planning,
     });
+
   } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Error modifying the planning.", error });
+    console.error("Erreur lors de la modification du planning :", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la modification du planning.",
+    });
   }
 };
 
-export const getTeacherPlannings = async (req, res) => {
-  try {
-    const teacherId = req.auth.userId;
-
-    const plannings = await PlanningPfa.find({
-      $or: [{ encadrant: teacherId }, { rapporteur: teacherId }],
-    });
-
-    if (!plannings || plannings.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No plannings found for this teacher." });
-    }
-
-    return res
-      .status(200)
-      .json({ message: "Plannings retrieved successfully.", plannings });
-  } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "Error retrieving plannings.", error });
-  }
+// ⏱ Utilitaire pour convertir "HH:mm" → minutes
+const convertTimeToMinutes = (timeStr) => {
+  const [hh, mm] = timeStr.split(":").map(Number);
+  return hh * 60 + mm;
 };
+
+
 
 export const getPFAs = async (req, res) => {
   try {
@@ -1484,5 +1494,220 @@ export const getPFAs = async (req, res) => {
   } catch (error) {
     console.error("Erreur lors de la récupération des PFAs :", error);
     return res.status(500).json({ error: "Erreur interne du serveur" });
+  }
+};
+export const getPlannings = async (req, res) => {
+  try {
+    const plannings = await PlanningPfa.find()
+      .populate({
+        path: "project",
+        populate: [
+          {
+            path: "teacher",
+            select: "_id firstName lastName",
+          },
+          {
+            path: "Students",
+            select: "_id firstName lastName",
+          },
+          {
+            path: "period",
+          },
+          {
+            path: "periodChoice",
+          },
+          {
+            path: "choices.student",
+            select: "firstName lastName",
+          }
+        ],
+      })
+      .populate({
+        path: "encadrant",
+        select: "_id firstName lastName",
+      })
+      .populate({
+        path: "rapporteur",
+        select: "_id firstName lastName",
+      });
+
+    res.status(200).json(plannings);
+  } catch (error) {
+    console.error("Erreur lors de la récupération des plannings :", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+
+export const getTeacherPlannings = async (req, res) => {
+  try {
+    const teacherId = req.auth.userId;
+
+    const plannings = await PlanningPfa.find({
+      $or: [{ encadrant: teacherId }, { rapporteur: teacherId }],
+    })
+      .populate({
+        path: "project",
+        populate: {
+          path: "Students",
+          select: "firstName lastName", // récupère juste le nom/prénom des étudiants
+        },
+      })
+      .populate("encadrant", "firstName lastName")
+      .populate("rapporteur", "firstName lastName");
+
+    if (!plannings || plannings.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No plannings found for this teacher." });
+    }
+
+    return res.status(200).json(plannings);
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Error retrieving plannings.", error });
+  }
+};
+
+
+
+export const getStudentPlanning = async (req, res) => {
+  try {
+    const studentId = req.auth.userId; // ID de l'étudiant connecté (extrait depuis le middleware d'authentification)
+    // Trouver tous les PFA où l'étudiant fait partie
+    const studentProjects = await PFA.find({ Students: studentId }).select('_id');
+
+    if (!studentProjects.length) {
+      return res.status(404).json({ message: "Aucun PFA trouvé pour cet étudiant." });
+    }
+
+    // Extraire les IDs des projets
+    const projectIds = studentProjects.map(pfa => pfa._id);
+
+    // Récupérer les plannings liés à ces projets
+    const plannings = await PlanningPfa.find({ project: { $in: projectIds } })
+      .populate({
+        path: 'project',
+        populate: { path: 'Students teacher', select: 'firstName lastName email' }
+      })
+      .populate('encadrant', 'firstName lastName email')
+      .populate('rapporteur', 'firstName lastName email')
+      .exec();
+
+    res.status(200).json(plannings);
+
+  } catch (error) {
+    console.error("Erreur lors de la récupération du planning :", error);
+    res.status(500).json({ message: "Erreur serveur." });
+  }
+};
+
+
+
+
+export const publishOrUnpublishPlannings = async (req, res) => {
+  const { response } = req.params;
+  const isPublished = response === "true";
+
+  // Validation de l'entrée
+  if (response !== "true" && response !== "false") {
+    return res.status(400).json({
+      success: false,
+      message: "La valeur de 'response' doit être 'true' ou 'false'",
+    });
+  }
+
+  try {
+    const totalPlannings = await PlanningPfa.countDocuments();
+    
+    // Vérification s'il y a des plannings
+    if (totalPlannings === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Aucun planning trouvé à mettre à jour",
+      });
+    }
+
+    // Mise à jour des plannings
+    const updatedPlannings = await PlanningPfa.updateMany(
+      {},
+      { isPublished: isPublished }
+    );
+
+    // Réponse de succès
+    return res.status(200).json({
+      success: true,
+      message: isPublished
+        ? "Les plannings ont été publiés avec succès"
+        : "Les plannings ont été masqués avec succès",
+      data: {
+        modifiedCount: updatedPlannings.modifiedCount,
+        totalPlannings
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur serveur:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erreur serveur lors de la mise à jour des plannings",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+
+
+export const sendEmailPlanning = async (req, res) => {
+  try {
+    const totalPlannings = await PlanningPfa.countDocuments();
+    if (totalPlannings === 0) {
+      return res.status(404).json({
+        message: "Aucun plannings trouvés.",
+      });
+    }
+
+    const previouslySentEmails = await PlanningPfa.findOne({ emailSent: true });
+    const isFirstSend = !previouslySentEmails;
+
+
+    let emailResults = null;
+
+      const subject = isFirstSend
+        ? "New PFA Planning Published"
+        : "Updated PFA Planning Published";
+
+      const headerContent = `<h2>Dear All,</h2>
+          <p>The PFA planning is now published. Please check the link below to review it:</p>`;
+
+      const bodyContent = `<p style="font-size: 16px;">Click the link below to view the planning:</p>
+          <p><a href="http://ISAMM.com/pfa-planning" target="_blank" style="color: #0078FF;">View Planning</a></p>`;
+
+      emailResults = await sendEmailsToInvolved(
+        subject,
+        headerContent,
+        bodyContent,
+        !isFirstSend
+      );
+
+const responseObj = {
+  message: isFirstSend
+    ? "Emails envoyés : première publication du planning"
+    : "Emails envoyés : mise à jour du planning",
+};
+ 
+      responseObj.emailResults = emailResults;
+      responseObj.isFirstSend = isFirstSend;
+  
+    return res.status(200).json(responseObj);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      message:
+        "An error occurred while updating the plannings and sending emails.",
+      error,
+    });
   }
 };

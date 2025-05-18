@@ -22,7 +22,10 @@ import {
   publishOrUnpublishPlannings,
   modifyPlanning,
   getTeacherPlannings,
-  getPFAs,sendPfaEmail
+  getPFAs,sendPfaEmail,
+  getPlannings ,
+  sendEmailPlanning,
+  getStudentPlanning
   
 } from "../controllers/Pfa.js";
 import {
@@ -54,10 +57,16 @@ router.post("/publishAll/:response", publishOrUnpublishAllPFAs);
 router.post("/list/send", sendPFAValidation);
 
 router.post("/generateSoutenances" , loggedMiddleware, isAdmin, generatePlanning)
+router.post("/planning/sendEmails", loggedMiddleware, isAdmin, sendEmailPlanning);
 router.get("/getPlanningByTeacher/:id" ,loggedMiddleware, isAdmin, getPlanningByTeacher)
 router.get("/getPlanningByStudent/:id" ,loggedMiddleware, isAdmin, getPlanningByStudent)
 router.patch("/publishPlannings/:response", loggedMiddleware, isAdmin, publishOrUnpublishPlannings);
+
 router.patch("/patchPlanning/:id",  loggedMiddleware, isAdmin, modifyPlanning);
-router.get("/getMyPlannings/",  loggedMiddleware, isTeacher, getTeacherPlannings);
+router.get("/getMyPlannings",  loggedMiddleware, isTeacher, getTeacherPlannings);
+router.get("/getPlannings", loggedMiddleware, isAdmin, getPlannings );
+router.get("/getStudentPlannings", loggedMiddleware, isStudent, getStudentPlanning );
+
+
 
 export default router;
